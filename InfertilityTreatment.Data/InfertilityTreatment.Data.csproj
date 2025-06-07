@@ -22,4 +22,9 @@
     <ProjectReference Include="..\InfertilityTreatment.Entity\InfertilityTreatment.Entity.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Migrations\" />
+    <Folder Include="Seeders\" />
+  </ItemGroup>
+
 </Project>

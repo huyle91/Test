@@ -55,7 +55,7 @@ Entity → No dependencies
 ### **🔧 Bước 1: Clone Repository**
 
 ```bash
-git clone <repository-url>
+git clone git@github.com:PRN232-ITMMS/BE.git
 cd InfertilityTreatment
 ```
 
@@ -160,23 +160,6 @@ Drop-Database -StartupProject InfertilityTreatment.API
 
 ---
 
-## 📁 Database Entities
-
-### **User Management**
-
-* Users
-* Customers
-* Doctors
-* RefreshTokens
-
-### **Treatment Services**
-
-* TreatmentServices
-* TreatmentPackages
-* TreatmentCycles
-
----
-
 ## 🔐 Authentication & Authorization
 
 ### JWT Settings (`appsettings.json`)
@@ -238,21 +221,6 @@ git checkout -b feature/[issue-name]
 # Code & Test
 # Commit & Push
 # PR → dev branch
-```
-
----
-
-## 🔮 Troubleshooting
-
-| Lỗi               | Nguyên nhân          | Giải pháp                                              |
-| ----------------- | -------------------- | ------------------------------------------------------ |
-| Missing EF Design | Thiếu package        | `Install-Package Microsoft.EntityFrameworkCore.Design` |
-| SQL Error         | Chưa chạy SQL Server | Mở SQL Server + Kiểm tra chuỗi kết nối                 |
-| Port in use       | Trùng port           |                                                        |
-
-```bash
-netstat -ano | findstr :7178
-taskkill /PID [PID] /F
 ```
 
 ---

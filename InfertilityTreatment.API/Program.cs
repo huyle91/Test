@@ -1,9 +1,7 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using System.Text;
 using InfertilityTreatment.Data.Context;
 using InfertilityTreatment.API.Extensions;
+using InfertilityTreatment.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,10 +16,18 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add Business Services
 builder.Services.AddBusinessServices();
 
+// Add JWT Authentication
+builder.Services.AddJwtAuthentication(builder.Configuration);
+
 // Configure Swagger with JWT
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new() { Title = "Infertility Treatment API", Version = "v1" });
+    c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "Infertility Treatment API",
+        Version = "v1",
+        Description = "API for managing infertility treatment cycles and patient care"
+    });
 
     // Add JWT Authentication to Swagger
     c.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
@@ -31,7 +37,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.\n\nExample: \"Bearer 12345abcdef\""
+        Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.\\n\\nExample: \"Bearer 12345abcdef\""
     });
 
     c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -50,62 +56,12 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure JWT Authentication
-var jwtSettings = builder.Configuration.GetSection("JwtSettings");
-var secretKey = jwtSettings["SecretKey"];
-
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false; // For development
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
-    {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
-        ClockSkew = TimeSpan.Zero
-    };
-    
-    // Add events for debugging
-    options.Events = new JwtBearerEvents
-    {
-        OnAuthenticationFailed = context =>
-        {
-            Console.WriteLine($"Authentication failed: {context.Exception.Message}");
-            return Task.CompletedTask;
-        },
-        OnTokenValidated = context =>
-        {
-            Console.WriteLine($"Token validated for user: {context.Principal?.Identity?.Name}");
-            return Task.CompletedTask;
-        }
-    };
-});
-
-// Configure Authorization Policies
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("CustomerOnly", policy => policy.RequireRole("Customer"));
-    options.AddPolicy("DoctorOnly", policy => policy.RequireRole("Doctor"));
-    options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin", "Manager"));
-});
-
 // Configure CORS for React app
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
+        policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
               .AllowCredentials();
@@ -115,26 +71,42 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+
+// Custom middleware (order matters!)
+app.UseMiddleware<LoggingMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Development middleware
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI(c =>
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "Infertility Treatment API V1");
-        c.RoutePrefix = "swagger"; // Set Swagger UI at /swagger
+        c.RoutePrefix = "swagger";
     });
 }
 
 app.UseHttpsRedirection();
+
+// CORS must be before Authentication
 app.UseCors("AllowReactApp");
 
+// Authentication & Authorization
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 
-// Add a simple health check endpoint
-app.MapGet("/health", () => "API is running! 🚀")
-    .WithName("HealthCheck");
+// Health check endpoint
+app.MapGet("/health", () => new
+{
+    Status = "Healthy",
+    Timestamp = DateTime.UtcNow,
+    Environment = app.Environment.EnvironmentName,
+    Version = "1.0.0"
+})
+.WithName("HealthCheck")
+.WithTags("Health");
 
 app.Run();

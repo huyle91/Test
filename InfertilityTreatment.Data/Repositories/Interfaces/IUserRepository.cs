@@ -6,7 +6,6 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
     {
         Task<User?> FindByEmailAsync(string email);
         Task<bool> EmailExistsAsync(string email);
-        Task<User?> GetUserWithProfileAsync(int userId);
-        Task<User?> GetUserWithRefreshTokensAsync(int userId);
+        Task<User?> GetByIdWithProfilesAsync(int id);
     }
 }

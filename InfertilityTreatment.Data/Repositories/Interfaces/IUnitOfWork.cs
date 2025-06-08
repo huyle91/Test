@@ -6,6 +6,7 @@
         IUserRepository Users { get; }
         ICustomerRepository Customers { get; }
         ITreatmentCycleRepository TreatmentCycles { get; }
+        IRefreshTokenRepository RefreshTokens { get; }
 
         // Transaction Methods
         Task<int> SaveChangesAsync();

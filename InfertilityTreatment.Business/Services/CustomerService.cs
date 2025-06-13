@@ -32,14 +32,14 @@ namespace InfertilityTreatment.Business.Services
             return customerProfileDto;
         }
 
-        public Task<string> UpdateCustomerProfileAsync(int customerId, CustomerProfileDto customerProfileDto)
+        public async Task<string> UpdateCustomerProfileAsync(int customerId, CustomerProfileDto customerProfileDto)
         {
-            var updatedCustomer = _customerRepository.UpdateCustomerProfileAsync(customerId, customerProfileDto);
+            var updatedCustomer = await _customerRepository.UpdateCustomerProfileAsync(customerId, customerProfileDto);
             if (updatedCustomer == null)
             {
                 throw new KeyNotFoundException($"Customer with ID {customerId} not found.");
             }
-            return Task.FromResult("Customer profile updated successfully.");
+            return "Customer profile updated successfully.";
         }
 
 

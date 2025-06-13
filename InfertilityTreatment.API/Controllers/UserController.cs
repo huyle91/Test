@@ -3,6 +3,7 @@ using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
@@ -11,9 +12,10 @@ namespace InfertilityTreatment.API.Controllers
 {
     [Route("api/users")]
     [ApiController]
+    [Authorize]
     public class UserController : ControllerBase
     {
-         private readonly IUserService _userService;
+        private readonly IUserService _userService;
         public UserController(IUserService userService)
         {
             _userService = userService;
@@ -46,7 +48,7 @@ namespace InfertilityTreatment.API.Controllers
             }
 
         }
-        [HttpPost("change-password")]
+        [HttpPut("change-password")]
         public async Task<ActionResult<string>> ChangePassword(ChangePasswordDto changePasswordDto)
         {
             try {

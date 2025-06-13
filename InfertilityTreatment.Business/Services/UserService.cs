@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Azure.Core;
 using InfertilityTreatment.Business.Helpers;
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Data.Repositories.Interfaces;
@@ -44,8 +43,8 @@ namespace InfertilityTreatment.Business.Services
             {
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
-            var proileDto = _mapper.Map<UserProfileDto>(user);
-            return proileDto;
+            var profileDto = _mapper.Map<UserProfileDto>(user);
+            return profileDto;
         }
 
         public async Task<string> UpdateProfileAsync(int userId, UpdateProfileDto updateProfileDto)

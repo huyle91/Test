@@ -25,7 +25,18 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<string> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto)
         {
-            var password = PasswordHelper.HashPassword(changePasswordDto.Password);
+            var user = await _userRepository.GetByIdAsync(userId)
+       ?? throw new KeyNotFoundException("User not found.");
+            var isCurrentPasswordCorrect = PasswordHelper.VerifyPassword(changePasswordDto.CurrentPassword, user.PasswordHash);
+            if (!isCurrentPasswordCorrect)
+                throw new ArgumentException("Current password is incorrect.");
+
+            var isNewPasswordSameAsOld = PasswordHelper.VerifyPassword(changePasswordDto.NewPassword, user.PasswordHash);
+            if (isNewPasswordSameAsOld)
+                throw new ArgumentException("New password must be different from the current password.");
+
+
+            var password = PasswordHelper.HashPassword(changePasswordDto.CurrentPassword);
 
             var result = await _userRepository.ChangePasswordAsync(userId, password);
             if (result == null)

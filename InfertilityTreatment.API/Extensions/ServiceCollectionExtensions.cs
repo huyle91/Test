@@ -27,7 +27,8 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<ICustomerRepository, CustomerRepository>();
             services.AddScoped<ITreatmentCycleRepository, TreatmentCycleRepository>();
             services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
-
+            services.AddScoped<IUserService, UserService>();
+            services.AddScoped<ICustomerService, CustomerService>();
             // Business Services
             services.AddScoped<IAuthService, AuthService>();
 

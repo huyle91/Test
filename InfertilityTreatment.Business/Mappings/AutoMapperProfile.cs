@@ -17,8 +17,8 @@ namespace InfertilityTreatment.Business.Mappings
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 
             // Customer mappings
-            CreateMap<Customer, CustomerProfileDto>()
-                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+            CreateMap<Customer, CustomerDetailDto>()
+               .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User)).ReverseMap();
             
             CreateMap<RegisterRequestDto, Customer>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
@@ -30,6 +30,8 @@ namespace InfertilityTreatment.Business.Mappings
                 .ForMember(dest => dest.RefreshToken, opt => opt.Ignore())
                 .ForMember(dest => dest.ExpiresAt, opt => opt.Ignore())
                 .ForMember(dest => dest.User, opt => opt.MapFrom(src => src));
+            // Map UpdateProfile to User entity
+            CreateMap<UpdateProfileDto, User>().ReverseMap();
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using AutoMapper;
-using Azure.Core;
 using InfertilityTreatment.Business.Helpers;
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Data.Repositories.Interfaces;

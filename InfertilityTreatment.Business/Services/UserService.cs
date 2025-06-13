@@ -36,7 +36,7 @@ namespace InfertilityTreatment.Business.Services
                 throw new ArgumentException("New password must be different from the current password.");
 
 
-            var password = PasswordHelper.HashPassword(changePasswordDto.CurrentPassword);
+            var password = PasswordHelper.HashPassword(changePasswordDto.NewPassword);
 
             var result = await _userRepository.ChangePasswordAsync(userId, password);
             if (result == null)

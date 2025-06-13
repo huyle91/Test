@@ -2,6 +2,8 @@ using AutoMapper;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Users;
+using InfertilityTreatment.Entity.DTOs.TreatmentServices;
+using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -32,6 +34,16 @@ namespace InfertilityTreatment.Business.Mappings
                 .ForMember(dest => dest.User, opt => opt.MapFrom(src => src));
             // Map UpdateProfile to User entity
             CreateMap<UpdateProfileDto, User>().ReverseMap();
+
+            //TreatmentService
+            CreateMap<TreatmentService, TreatmentServiceDto>();
+            CreateMap<CreateTreatmentServiceDto, TreatmentService>();
+            CreateMap<UpdateTreatmentServiceDto, TreatmentService>();
+
+            //TreatmentPakage
+            CreateMap<TreatmentPackage, TreatmentPackageDto>();
+            CreateMap<CreateTreatmentPackageDto, TreatmentPackage>();
+            CreateMap<UpdateTreatmentPackageDto, TreatmentPackage>();
         }
     }
 }

@@ -44,5 +44,12 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         {
             return await _context.TreatmentPackages.AnyAsync(p => p.PackageName == packageName);
         }
+
+        public async Task<IEnumerable<TreatmentPackage>> GetByServiceIdAsync(int serviceId)
+        {
+            return await _context.TreatmentPackages
+                .Where(p => p.ServiceId == serviceId && p.IsActive)
+                .ToListAsync();
+        }
     }
 }

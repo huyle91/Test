@@ -14,5 +14,7 @@ namespace InfertilityTreatment.Business.Interfaces
         Task<int> CreateAsync(CreateTreatmentPackageDto dto);
         Task<bool> UpdateAsync(int id, UpdateTreatmentPackageDto dto);
         Task<bool> DeleteAsync(int id);
+
+        Task<IEnumerable<TreatmentPackageDto>> GetByServiceIdAsync(int serviceId);
     }
 }

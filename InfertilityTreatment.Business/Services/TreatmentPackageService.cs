@@ -1,9 +1,11 @@
 ﻿using AutoMapper;
 using InfertilityTreatment.Business.Interfaces;
+using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.Constants;
 using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
 using InfertilityTreatment.Entity.Entities;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,5 +56,11 @@ namespace InfertilityTreatment.Business.Services
         }
 
         public async Task<bool> DeleteAsync(int id) => await _repo.DeleteAsync(id);
+
+        public async Task<IEnumerable<TreatmentPackageDto>> GetByServiceIdAsync(int serviceId)
+        {
+            var packages = await _repo.GetByServiceIdAsync(serviceId);
+            return _mapper.Map<IEnumerable<TreatmentPackageDto>>(packages);
+        }
     }
 }

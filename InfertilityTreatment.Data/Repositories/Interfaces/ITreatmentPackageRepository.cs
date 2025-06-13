@@ -16,5 +16,7 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<bool> DeleteAsync(int id);
 
         Task<bool> IsPackageNameExistsAsync(string packageName);
+
+        Task<IEnumerable<TreatmentPackage>> GetByServiceIdAsync(int serviceId);
     }
 }

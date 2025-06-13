@@ -127,5 +127,24 @@ namespace InfertilityTreatment.API.Controllers
                     ApiResponseDto<string>.CreateError(TreatmentPackageMessages.UnknowError ));
             }
         }
+
+        [Authorize]
+        [HttpGet("by-service/{serviceId}")]
+        public async Task<ActionResult<ApiResponseDto<IEnumerable<TreatmentPackageDto>>>> GetPackagesByService(int serviceId)
+        {
+            try
+            {
+                var packages = await _service.GetByServiceIdAsync(serviceId);
+                if (packages == null || !packages.Any())
+                    return NotFound(ApiResponseDto<string>.CreateError("No treatment packages found for the given service ID."));
+
+                return Ok(ApiResponseDto<IEnumerable<TreatmentPackageDto>>.CreateSuccess(packages, "Fetched treatment packages by service ID successfully."));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while fetching treatment packages by service ID."));
+            }
+        }
     }
 }

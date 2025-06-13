@@ -30,5 +30,6 @@ namespace InfertilityTreatment.Entity.Entities
         public virtual TreatmentService TreatmentService { get; set; } = null!;
 
         public virtual ICollection<TreatmentCycle> TreatmentCycles { get; set; } = new List<TreatmentCycle>();
+
     }
 }

@@ -1,9 +1,11 @@
 ﻿using InfertilityTreatment.Data.Context;
 using InfertilityTreatment.Data.Repositories.Interfaces;
+using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Globalization;
+using System.Linq.Expressions;
 
 namespace InfertilityTreatment.Data.Repositories.Implementations
 {
@@ -90,6 +92,34 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 throw new Exception($"Error: {ex.Message}");
             }
         }
+
+        public async Task<PaginatedResultDto<User?>> GetUsers(UserFilterDto filter)
+        {
+            try
+            {
+                var users = await GetAllAsync(); 
+
+                var totalCount = users.Count();
+
+                var pagedUsers = users
+                    .Skip((filter.PageNumber - 1) * filter.PageSize)
+                    .Take(filter.PageSize)
+                    .ToList();
+
+                return new PaginatedResultDto<User?>(
+                    pagedUsers,
+                    totalCount,
+                    filter.PageNumber,
+                    filter.PageSize
+                );
+            }
+            catch (Exception ex)
+            {
+                throw new ApplicationException("Failed to retrieve users.", ex);
+            }
+        }
+
+
 
     }
 }

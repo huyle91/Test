@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace InfertilityTreatment.API.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/doctors/")]
     [ApiController]
     public class DoctorsController : ControllerBase
     {
@@ -59,11 +59,11 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<List<DoctorResponseDto>>.CreateSuccess(doctors));
         }
 
-        [HttpPost]
-        public async Task<IActionResult> CreateDoctor([FromBody] CreateDoctorDto createDoctorDto)
-        {
-            var doctor = await _doctorService.CreateDoctorAsync(createDoctorDto);
-            return CreatedAtAction(nameof(GetDoctorById), new { id = doctor.Id }, ApiResponseDto<DoctorDetailDto>.CreateSuccess(doctor, "Doctor created successfully"));
-        }
+        //[HttpPost]
+        //public async Task<IActionResult> CreateDoctor([FromBody] CreateDoctorDto createDoctorDto)
+        //{
+        //    var doctor = await _doctorService.CreateDoctorAsync(createDoctorDto);
+        //    return CreatedAtAction(nameof(GetDoctorById), new { id = doctor.Id }, ApiResponseDto<DoctorDetailDto>.CreateSuccess(doctor, "Doctor created successfully"));
+        //}
     }
 }

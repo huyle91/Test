@@ -30,9 +30,6 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             {
                 query = query.Where(d => d.IsAvailable == filter.IsAvailable.Value);
             }
-            if (filter.MinRating.HasValue)
-            {
-            }
             if (filter.MinYearsOfExperience.HasValue)
             {
                 query = query.Where(d => d.YearsOfExperience >= filter.MinYearsOfExperience.Value);

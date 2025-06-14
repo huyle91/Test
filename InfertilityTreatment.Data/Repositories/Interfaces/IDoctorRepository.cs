@@ -2,7 +2,7 @@ using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.Entities;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using InfertilityTreatment.Entity.DTOs.Common; // Required for PaginatedResultDto if not already present
+using InfertilityTreatment.Entity.DTOs.Common; 
 
 namespace InfertilityTreatment.Data.Repositories.Interfaces
 {

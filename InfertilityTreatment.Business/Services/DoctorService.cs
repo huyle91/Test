@@ -4,6 +4,8 @@ using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.Entities;
+using Microsoft.Extensions.Logging;
+using InfertilityTreatment.Business.Exceptions;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -14,11 +16,13 @@ namespace InfertilityTreatment.Business.Services
     {
         private readonly IDoctorRepository _doctorRepository;
         private readonly IMapper _mapper;
+        private readonly ILogger<DoctorService> _logger;
 
-        public DoctorService(IDoctorRepository doctorRepository, IMapper mapper)
+        public DoctorService(IDoctorRepository doctorRepository, IMapper mapper, ILogger<DoctorService> logger)
         {
             _doctorRepository = doctorRepository;
             _mapper = mapper;
+            _logger = logger;
         }
 
         public async Task<PaginatedResultDto<DoctorResponseDto>> GetAllDoctorsAsync(DoctorFilterDto filter)
@@ -30,8 +34,19 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<DoctorDetailDto> GetDoctorByIdAsync(int doctorId)
         {
-            var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
-            return _mapper.Map<DoctorDetailDto>(doctor);
+            try
+            {
+                var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
+                if (doctor == null)
+                    throw new NotFoundException($"Doctor with ID {doctorId} not found");
+
+                return _mapper.Map<DoctorDetailDto>(doctor);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting doctor by ID: {DoctorId}", doctorId);
+                throw;
+            }
         }
 
         public async Task<DoctorDetailDto> UpdateDoctorProfileAsync(int doctorId, UpdateDoctorDto updateDoctorDto)
@@ -42,7 +57,6 @@ namespace InfertilityTreatment.Business.Services
                 return null;
             }
             _mapper.Map(updateDoctorDto, doctor);
-            // Update User info if provided
             if (doctor.User != null)
             {
                 if (!string.IsNullOrEmpty(updateDoctorDto.FullName))
@@ -53,8 +67,8 @@ namespace InfertilityTreatment.Business.Services
                     doctor.User.PhoneNumber = updateDoctorDto.PhoneNumber;
             }
             await _doctorRepository.UpdateDoctorAsync(doctor);
-            var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
-            return _mapper.Map<DoctorDetailDto>(updated);
+            //var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
+            return _mapper.Map<DoctorDetailDto>(doctor);
         }
 
         public async Task<DoctorDetailDto> UpdateAvailabilityAsync(int doctorId, bool isAvailable)
@@ -64,8 +78,8 @@ namespace InfertilityTreatment.Business.Services
             {
                 doctor.IsAvailable = isAvailable;
                 await _doctorRepository.UpdateDoctorAsync(doctor);
-                var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
-                return _mapper.Map<DoctorDetailDto>(updated);
+                //var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
+                return _mapper.Map<DoctorDetailDto>(doctor);
             }
             return null;
         }
@@ -80,7 +94,6 @@ namespace InfertilityTreatment.Business.Services
         {
             var doctor = _mapper.Map<Doctor>(createDoctorDto);
             await _doctorRepository.AddDoctorAsync(doctor);
-            // Fetch with User included for response
             var created = await _doctorRepository.GetDoctorByIdAsync(doctor.Id);
             return _mapper.Map<DoctorDetailDto>(created);
         }
@@ -90,10 +103,12 @@ namespace InfertilityTreatment.Business.Services
             var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
             if (doctor != null)
             {
-                doctor.IsAvailable = !doctor.IsAvailable;
-                await _doctorRepository.UpdateDoctorAsync(doctor);
-                var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
-                return _mapper.Map<DoctorDetailDto>(updated);
+
+                return await UpdateAvailabilityAsync(doctorId, !doctor.IsAvailable);
+                //doctor.IsAvailable = !doctor.IsAvailable;
+                //await _doctorRepository.UpdateDoctorAsync(doctor);
+                ////var updated = await _doctorRepository.GetDoctorByIdAsync(doctorId);
+                //return _mapper.Map<DoctorDetailDto>(doctor);
             }
             return null;
         }

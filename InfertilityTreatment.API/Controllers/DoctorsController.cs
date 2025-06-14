@@ -21,6 +21,12 @@ namespace InfertilityTreatment.API.Controllers
         [HttpGet]
         public async Task<IActionResult> GetAllDoctors([FromQuery] DoctorFilterDto filter)
         {
+            if (filter.PageSize > 100)
+                filter.PageSize = 100;
+
+            if (filter.PageNumber < 1)
+                filter.PageNumber = 1;
+
             var result = await _doctorService.GetAllDoctorsAsync(filter);
             return Ok(ApiResponseDto<PaginatedResultDto<DoctorResponseDto>>.CreateSuccess(result));
         }
@@ -35,6 +41,7 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [Authorize]
         public async Task<IActionResult> UpdateDoctorProfile(int id, [FromBody] UpdateDoctorDto updateDoctorDto)
         {
             var updated = await _doctorService.UpdateDoctorProfileAsync(id, updateDoctorDto);

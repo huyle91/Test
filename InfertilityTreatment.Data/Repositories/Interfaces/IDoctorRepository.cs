@@ -1,0 +1,18 @@
+using InfertilityTreatment.Entity.DTOs.Doctors;
+using InfertilityTreatment.Entity.Entities;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using InfertilityTreatment.Entity.DTOs.Common; // Required for PaginatedResultDto if not already present
+
+namespace InfertilityTreatment.Data.Repositories.Interfaces
+{
+    public interface IDoctorRepository
+    {
+        Task<(IEnumerable<Doctor> Doctors, int TotalCount)> GetDoctorsAsync(DoctorFilterDto filter);
+        Task<Doctor> GetDoctorByIdAsync(int doctorId);
+        Task AddDoctorAsync(Doctor doctor);
+        Task UpdateDoctorAsync(Doctor doctor);
+        Task DeleteDoctorAsync(int doctorId);
+        Task<IEnumerable<Doctor>> SearchDoctorsAsync(DoctorSearchDto searchDto);
+    }
+}

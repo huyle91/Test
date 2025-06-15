@@ -10,8 +10,6 @@ namespace InfertilityTreatment.Entity.DTOs.Users
 {
     public class UpdateProfileDto
     {
-        [EmailAddress]
-        public string Email { get; set; } = string.Empty;
         [Required]
         [StringLength(100)]
         public string FullName { get; set; } = string.Empty;

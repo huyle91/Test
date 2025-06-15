@@ -1,6 +1,7 @@
 ﻿using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Common;
+using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,25 @@ namespace InfertilityTreatment.API.Controllers
         public UserController(IUserService userService)
         {
             _userService = userService;
+        }
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<ApiResponseDto<PaginatedResultDto<UserProfileDto>>>> GetUsers([FromQuery] UserFilterDto filter)
+        {
+            try
+            {
+                if (filter.PageSize > 100)
+                    filter.PageSize = 100;
+
+                if (filter.PageNumber < 1)
+                    filter.PageNumber = 1;
+                var users = await _userService.GetUsersAsync(filter);
+                return Ok(ApiResponseDto<PaginatedResultDto<UserProfileDto>>.CreateSuccess(users, "Successfully retrieved user data."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving list customer."));
+            }
         }
         [HttpGet("profile")]
         public async Task<ActionResult<ApiResponseDto<UserProfileDto>>> GetProfile()

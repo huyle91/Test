@@ -1,6 +1,8 @@
 ﻿using AutoMapper;
 using InfertilityTreatment.Business.Interfaces;
+using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Data.Repositories.Interfaces;
+using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using System;
@@ -51,6 +53,34 @@ namespace InfertilityTreatment.Business.Services
                 throw new KeyNotFoundException($"Customer with ID {customerId} not found.");
             }
             return "Customer profile updated successfully.";
+        }
+        public async Task<string> CheckCustomerWithMedicalHistoryAsync(int customerId)
+        {
+            var customer = await _customerRepository.GetWithMedicalHistoryAsync(customerId);
+            if (customer == null)
+            {
+                throw new KeyNotFoundException($"Customer with ID {customerId} not found.");
+            }
+            return "Customer exists with medical history.";
+        }
+
+        public async Task<PaginatedResultDto<CustomerProfileDto>> GetCustomersAsync(CustomerFilterDto filter)
+        {
+            var pagedResult = await _customerRepository.GetCustomers(filter);
+
+            if (pagedResult == null || !pagedResult.Items.Any())
+            {
+                throw new KeyNotFoundException("No users found.");
+            }
+
+            var profileDtos = _mapper.Map<List<CustomerProfileDto>>(pagedResult.Items);
+
+            return new PaginatedResultDto<CustomerProfileDto>(
+                profileDtos,
+                pagedResult.TotalCount,
+                pagedResult.PageNumber,
+                pagedResult.PageSize
+            );
         }
     }
 }

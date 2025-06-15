@@ -2,6 +2,7 @@
 using InfertilityTreatment.Business.Helpers;
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Data.Repositories.Interfaces;
+using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -58,6 +59,25 @@ namespace InfertilityTreatment.Business.Services
             return profileDto;
         }
 
+        public async Task<PaginatedResultDto<UserProfileDto>> GetUsersAsync(UserFilterDto filter)
+        {
+            var pagedResult = await _userRepository.GetUsers(filter);
+
+            if (pagedResult == null || !pagedResult.Items.Any())
+            {
+                throw new KeyNotFoundException("No users found.");
+            }
+
+            var profileDtos = _mapper.Map<List<UserProfileDto>>(pagedResult.Items);
+
+            return new PaginatedResultDto<UserProfileDto>(
+                profileDtos,
+                pagedResult.TotalCount,
+                pagedResult.PageNumber,
+                pagedResult.PageSize
+            );
+        }
+
         public async Task<string> UpdateProfileAsync(int userId, UpdateProfileDto updateProfileDto)
         {
             var user = _mapper.Map<User>(updateProfileDto);
@@ -69,8 +89,8 @@ namespace InfertilityTreatment.Business.Services
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
             return "Profile updated successfully";
-
         }
+
     }
 
 }

@@ -5,44 +5,34 @@ using InfertilityTreatment.Entity.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Threading.Tasks;
 
 namespace InfertilityTreatment.Data.Repositories.Implementations
 {
-    public class DoctorRepository : IDoctorRepository
+    public class DoctorRepository : BaseRepository<Doctor>, IDoctorRepository
     {
-        private readonly ApplicationDbContext _context;
-
-        public DoctorRepository(ApplicationDbContext context)
+        public DoctorRepository(ApplicationDbContext context) : base(context)
         {
-            _context = context;
         }
 
         public async Task<(IEnumerable<Doctor> Doctors, int TotalCount)> GetDoctorsAsync(DoctorFilterDto filter)
         {
-            var query = _context.Doctors.Include(d => d.User).AsQueryable();
+            Expression<Func<Doctor, bool>> predicate = d =>
+        (string.IsNullOrEmpty(filter.Specialization) || d.Specialization.Contains(filter.Specialization)) &&
+        (!filter.IsAvailable.HasValue || d.IsAvailable == filter.IsAvailable.Value) &&
+        (!filter.MinYearsOfExperience.HasValue || d.YearsOfExperience >= filter.MinYearsOfExperience.Value);
 
-            if (!string.IsNullOrEmpty(filter.Specialization))
-            {
-                query = query.Where(d => d.Specialization.Contains(filter.Specialization));
-            }
-            if (filter.IsAvailable.HasValue)
-            {
-                query = query.Where(d => d.IsAvailable == filter.IsAvailable.Value);
-            }
-            if (filter.MinYearsOfExperience.HasValue)
-            {
-                query = query.Where(d => d.YearsOfExperience >= filter.MinYearsOfExperience.Value);
-            }
+            var allDoctors = await FindWithIncludeAsync(predicate, d => d.User);
 
-            var totalCount = await query.CountAsync();
+            var totalCount = allDoctors.Count();
 
-            var doctors = await query
+            var pagedDoctors = allDoctors
                 .Skip((filter.PageNumber - 1) * filter.PageSize)
                 .Take(filter.PageSize)
-                .ToListAsync();
-            
-            return (doctors, totalCount);
+                .ToList();
+
+            return (pagedDoctors, totalCount);
         }
 
         public async Task<Doctor> GetDoctorByIdAsync(int doctorId)
@@ -76,25 +66,15 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public async Task<IEnumerable<Doctor>> SearchDoctorsAsync(DoctorSearchDto searchDto)
         {
-            var query = _context.Doctors.Include(d => d.User).AsQueryable();
-
-            if (!string.IsNullOrEmpty(searchDto.Query))
-            {
-                query = query.Where(d => d.User.FullName.Contains(searchDto.Query) || 
-                                         d.Specialization.Contains(searchDto.Query));
-            }
-
-            if (!string.IsNullOrEmpty(searchDto.Specialization))
-            {
-                query = query.Where(d => d.Specialization.Contains(searchDto.Specialization));
-            }
-
-            if (searchDto.IsAvailable.HasValue)
-            {
-                query = query.Where(d => d.IsAvailable == searchDto.IsAvailable.Value);
-            }
-            
-            return await query.ToListAsync();
+            Expression<Func<Doctor, bool>> predicate = d =>
+                                        (string.IsNullOrEmpty(searchDto.Query) ||
+                                        d.User.FullName.Contains(searchDto.Query) ||
+                                        d.Specialization.Contains(searchDto.Query)) &&
+                                        (string.IsNullOrEmpty(searchDto.Specialization) ||
+                                        d.Specialization.Contains(searchDto.Specialization)) &&
+                                        (!searchDto.IsAvailable.HasValue ||
+                                        d.IsAvailable == searchDto.IsAvailable.Value);
+            return await FindWithIncludeAsync(predicate, d => d.User);
         }
     }
 }

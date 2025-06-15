@@ -14,7 +14,6 @@
     <Folder Include="DTOs\Auth\" />
     <Folder Include="DTOs\Common\" />
     <Folder Include="DTOs\TreatmentCycles\" />
-    <Folder Include="DTOs\Users\" />
   </ItemGroup>
 
 </Project>

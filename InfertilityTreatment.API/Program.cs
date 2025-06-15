@@ -1,7 +1,11 @@
-using Microsoft.EntityFrameworkCore;
-using InfertilityTreatment.Data.Context;
 using InfertilityTreatment.API.Extensions;
 using InfertilityTreatment.API.Middleware;
+using InfertilityTreatment.Business.Interfaces;
+using InfertilityTreatment.Business.Services;
+using InfertilityTreatment.Data.Context;
+using InfertilityTreatment.Data.Repositories.Implementations;
+using InfertilityTreatment.Data.Repositories.Interfaces;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 

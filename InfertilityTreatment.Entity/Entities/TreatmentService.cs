@@ -8,7 +8,7 @@ namespace InfertilityTreatment.Entity.Entities
     {
         [Required]
         [MaxLength(200)]
-        public string Name { get; set; } = string.Empty; // IUI, IVF, etc.
+        public string Name { get; set; } = string.Empty; // IUI, IVF, ...
 
         [Column(TypeName = "nvarchar(max)")]
         public string? Description { get; set; }
@@ -16,10 +16,10 @@ namespace InfertilityTreatment.Entity.Entities
         [Column(TypeName = "decimal(12,2)")]
         public decimal? BasePrice { get; set; }
 
-        public int? EstimatedDuration { get; set; } // Duration in days
+        public int? EstimatedDuration { get; set; } 
 
         [Column(TypeName = "nvarchar(max)")]
-        public string? Requirements { get; set; } // JSON format
+        public string? Requirements { get; set; } 
 
         // Navigation Properties
         public virtual ICollection<TreatmentPackage> TreatmentPackages { get; set; } = new List<TreatmentPackage>();

@@ -2,6 +2,9 @@ using AutoMapper;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Users;
+using InfertilityTreatment.Entity.DTOs.Doctors;
+using InfertilityTreatment.Entity.DTOs.TreatmentServices;
+using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -17,12 +20,26 @@ namespace InfertilityTreatment.Business.Mappings
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
 
             // Customer mappings
-            CreateMap<Customer, CustomerProfileDto>()
-                .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User));
+            CreateMap<Customer, CustomerDetailDto>()
+               .ForMember(dest => dest.User, opt => opt.MapFrom(src => src.User)).ReverseMap();
             
             CreateMap<RegisterRequestDto, Customer>()
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
                 .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
+
+            // Doctor mappings
+            CreateMap<Doctor, DoctorResponseDto>()
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName));
+            CreateMap<Doctor, DoctorDetailDto>()
+                .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.User.FullName))
+                .ForMember(dest => dest.Email, opt => opt.MapFrom(src => src.User.Email))
+                .ForMember(dest => dest.PhoneNumber, opt => opt.MapFrom(src => src.User.PhoneNumber))
+                .ForMember(dest => dest.SuccessRate, opt => opt.MapFrom(src => src.SuccessRate))
+                .ForMember(dest => dest.LicenseNumber, opt => opt.MapFrom(src => src.LicenseNumber));
+            CreateMap<UpdateDoctorDto, Doctor>()
+                .ForMember(dest => dest.User, opt => opt.Ignore()); 
+            CreateMap<UpdateDoctorDto, User>();
+            CreateMap<CreateDoctorDto, Doctor>();
 
             // Response mappings
             CreateMap<User, LoginResponseDto>()
@@ -30,6 +47,21 @@ namespace InfertilityTreatment.Business.Mappings
                 .ForMember(dest => dest.RefreshToken, opt => opt.Ignore())
                 .ForMember(dest => dest.ExpiresAt, opt => opt.Ignore())
                 .ForMember(dest => dest.User, opt => opt.MapFrom(src => src));
+            // Map UpdateProfile to User entity
+            CreateMap<UpdateProfileDto, User>().ReverseMap();
+
+            //TreatmentService
+            CreateMap<TreatmentService, TreatmentServiceDto>();
+            CreateMap<CreateTreatmentServiceDto, TreatmentService>();
+            CreateMap<UpdateTreatmentServiceDto, TreatmentService>();
+
+            //TreatmentPakage
+            CreateMap<TreatmentPackage, TreatmentPackageDto>();
+            CreateMap<CreateTreatmentPackageDto, TreatmentPackage>();
+            CreateMap<UpdateTreatmentPackageDto, TreatmentPackage>();
+
+            // CustomerProfile
+            CreateMap<Customer, CustomerProfileDto>();
         }
     }
 }

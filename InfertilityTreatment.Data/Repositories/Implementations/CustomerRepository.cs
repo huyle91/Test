@@ -1,5 +1,6 @@
 using InfertilityTreatment.Data.Context;
 using InfertilityTreatment.Data.Repositories.Interfaces;
+using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using Microsoft.Data.SqlClient;
@@ -28,14 +29,18 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
         }
 
-        public async Task<Customer?> GetWithMedicalHistoryAsync(int customerId)
+        public async Task<Customer> GetWithMedicalHistoryAsync(int customerId)
         {
-            //return await _dbSet
-            //    .Include(c => c.User)
-            //    .Include(c => c.TreatmentCycles)
-            //    .FirstOrDefaultAsync(c => c.Id == customerId && c.IsActive);
-            return await GetByIdWithIncludeAsync(customerId, c => c.User, c => c.TreatmentCycles);
+            var customer = await GetByIdWithIncludeAsync(customerId, c => c.User, c => c.TreatmentCycles);
+
+            if (customer == null)
+            {
+                throw new KeyNotFoundException($"Customer with ID {customerId} not found.");
+            }
+
+            return customer;
         }
+
 
         public async Task<Customer?> UpdateCustomerProfileAsync(int customerId, CustomerProfileDto customerProfileDto)
         {
@@ -69,6 +74,19 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             await _context.SaveChangesAsync();
 
             return customer;
+        }
+        public async Task<PaginatedResultDto<Customer?>> GetCustomers(CustomerFilterDto filter)
+        {
+            var query = _context.Customers.AsQueryable();
+
+            var totalCount = await query.CountAsync();
+
+            var pagedUsers = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync();
+
+            return new PaginatedResultDto<Customer?>(pagedUsers, totalCount, filter.PageNumber, filter.PageSize);
         }
     }
 }

@@ -22,6 +22,7 @@ namespace InfertilityTreatment.API.Controllers
             _userService = userService;
         }
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<ApiResponseDto<PaginatedResultDto<UserProfileDto>>>> GetUsers([FromQuery] UserFilterDto filter)
         {
             try
@@ -36,7 +37,7 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving the profile."));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving list customer."));
             }
         }
         [HttpGet("profile")]

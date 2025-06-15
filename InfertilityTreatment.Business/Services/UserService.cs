@@ -78,9 +78,6 @@ namespace InfertilityTreatment.Business.Services
             );
         }
 
-
-
-
         public async Task<string> UpdateProfileAsync(int userId, UpdateProfileDto updateProfileDto)
         {
             var user = _mapper.Map<User>(updateProfileDto);
@@ -92,8 +89,8 @@ namespace InfertilityTreatment.Business.Services
                 throw new KeyNotFoundException($"User with ID {userId} not found.");
             }
             return "Profile updated successfully";
-
         }
+
     }
 
 }

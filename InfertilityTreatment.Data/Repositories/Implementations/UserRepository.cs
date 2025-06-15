@@ -95,31 +95,16 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public async Task<PaginatedResultDto<User?>> GetUsers(UserFilterDto filter)
         {
-            try
-            {
-                var users = await GetAllAsync(); 
+            var query = _context.Users.AsQueryable();
 
-                var totalCount = users.Count();
+            var totalCount = await query.CountAsync();
 
-                var pagedUsers = users
-                    .Skip((filter.PageNumber - 1) * filter.PageSize)
-                    .Take(filter.PageSize)
-                    .ToList();
+            var pagedUsers = await query
+                .Skip((filter.PageNumber - 1) * filter.PageSize)
+                .Take(filter.PageSize)
+                .ToListAsync();
 
-                return new PaginatedResultDto<User?>(
-                    pagedUsers,
-                    totalCount,
-                    filter.PageNumber,
-                    filter.PageSize
-                );
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("Failed to retrieve users.", ex);
-            }
+            return new PaginatedResultDto<User?>(pagedUsers, totalCount, filter.PageNumber, filter.PageSize);
         }
-
-
-
     }
 }

@@ -21,6 +21,26 @@ namespace InfertilityTreatment.API.Controllers
         {
             _customerService = customerService;
         }
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<ApiResponseDto<PaginatedResultDto<CustomerProfileDto>>>> GetListCustomer([FromQuery] CustomerFilterDto filter)
+        {
+            try
+            {
+                if (filter.PageSize > 100)
+                    filter.PageSize = 100;
+
+                if (filter.PageNumber < 1)
+                    filter.PageNumber = 1;
+                var customer = await _customerService.GetCustomersAsync(filter);
+                return Ok(ApiResponseDto<PaginatedResultDto<CustomerProfileDto>>.CreateSuccess(customer, "Customer profile retrieved successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving list customer."));
+
+            }
+        }
         [HttpGet("{id}")]
         public async Task<ActionResult<ApiResponseDto<CustomerDetailDto>>> GetProfile(int id)
         {
@@ -56,7 +76,7 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving the customer profile."));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while update the customer profile."));
             }
         }
         [HttpPut("{id}/medical-history")]
@@ -80,7 +100,7 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while retrieving the customer profile."));
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while upadate medicalHistory."));
             }
         }
     }

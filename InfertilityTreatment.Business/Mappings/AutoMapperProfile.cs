@@ -59,6 +59,9 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<TreatmentPackage, TreatmentPackageDto>();
             CreateMap<CreateTreatmentPackageDto, TreatmentPackage>();
             CreateMap<UpdateTreatmentPackageDto, TreatmentPackage>();
+
+            // CustomerProfile
+            CreateMap<Customer, CustomerProfileDto>();
         }
     }
 }

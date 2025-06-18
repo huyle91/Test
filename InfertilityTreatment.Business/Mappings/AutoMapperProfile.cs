@@ -5,6 +5,8 @@ using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.DTOs.TreatmentServices;
 using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
+using InfertilityTreatment.Entity.DTOs.Appointments;
+using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -62,6 +64,16 @@ namespace InfertilityTreatment.Business.Mappings
 
             // CustomerProfile
             CreateMap<Customer, CustomerProfileDto>();
+
+            //Appointment
+            CreateMap<Appointment, AppointmentDto>();
+            CreateMap<CreateAppointmentDto, Appointment>();
+            CreateMap<UpdateAppointmentDto, Appointment>();
+
+            //DoctorSchedule
+            CreateMap<DoctorSchedule, DoctorScheduleDto>();
+            CreateMap<CreateDoctorScheduleDto, DoctorSchedule>();
+            CreateMap<UpdateDoctorScheduleDto, DoctorSchedule>();
         }
     }
 }

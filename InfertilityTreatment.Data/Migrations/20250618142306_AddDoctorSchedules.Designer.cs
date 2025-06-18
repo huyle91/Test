@@ -4,6 +4,7 @@ using InfertilityTreatment.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfertilityTreatment.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250618142306_AddDoctorSchedules")]
+    partial class AddDoctorSchedules
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -42,7 +45,7 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
 
-                    b.Property<int>("DoctorScheduleId")
+                    b.Property<int>("Duration")
                         .HasColumnType("int");
 
                     b.Property<bool>("IsActive")
@@ -69,8 +72,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("CycleId");
 
                     b.HasIndex("DoctorId");
-
-                    b.HasIndex("DoctorScheduleId");
 
                     b.ToTable("Appointments", (string)null);
                 });
@@ -475,15 +476,7 @@ namespace InfertilityTreatment.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("InfertilityTreatment.Entity.Entities.DoctorSchedule", "DoctorSchedule")
-                        .WithMany()
-                        .HasForeignKey("DoctorScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("Doctor");
-
-                    b.Navigation("DoctorSchedule");
 
                     b.Navigation("TreatmentCycle");
                 });

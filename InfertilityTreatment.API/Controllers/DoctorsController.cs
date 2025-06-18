@@ -9,6 +9,7 @@ namespace InfertilityTreatment.API.Controllers
 {
     [Route("api/doctors/")]
     [ApiController]
+
     public class DoctorsController : ControllerBase
     {
         private readonly IDoctorService _doctorService;

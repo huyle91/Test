@@ -4,6 +4,7 @@ using InfertilityTreatment.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfertilityTreatment.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250616163935_AddNotification")]
+    partial class AddNotification
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,59 +24,6 @@ namespace InfertilityTreatment.Data.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<byte>("AppointmentType")
-                        .HasColumnType("tinyint");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("CycleId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("DoctorScheduleId")
-                        .HasColumnType("int");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<string>("Notes")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<string>("Results")
-                        .HasColumnType("nvarchar(max)");
-
-                    b.Property<DateTime>("ScheduledDateTime")
-                        .HasColumnType("datetime2");
-
-                    b.Property<byte>("Status")
-                        .HasColumnType("tinyint");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .IsRequired()
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CycleId");
-
-                    b.HasIndex("DoctorId");
-
-                    b.HasIndex("DoctorScheduleId");
-
-                    b.ToTable("Appointments", (string)null);
-                });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
@@ -187,39 +137,6 @@ namespace InfertilityTreatment.Data.Migrations
                         .IsUnique();
 
                     b.ToTable("Doctors");
-                });
-
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.DoctorSchedule", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<int>("DoctorId")
-                        .HasColumnType("int");
-
-                    b.Property<TimeSpan>("EndTime")
-                        .HasColumnType("time");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("bit");
-
-                    b.Property<TimeSpan>("StartTime")
-                        .HasColumnType("time");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime2");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("DoctorId");
-
-                    b.ToTable("DoctorSchedules");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
@@ -403,14 +320,12 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasMaxLength(1000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("DurationWeeks")
                         .HasColumnType("int");
 
                     b.Property<string>("IncludedServices")
-                        .HasMaxLength(1000)
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(max)");
 
@@ -436,7 +351,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("ServiceId");
 
                     b.ToTable("TreatmentPackages", (string)null);
-                    b.ToTable("TreatmentPackages", (string)null);
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentService", b =>
@@ -455,7 +369,6 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<string>("Description")
                         .HasMaxLength(1000)
-                        .HasMaxLength(1000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("EstimatedDuration")
@@ -471,7 +384,6 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<string>("Requirements")
                         .HasMaxLength(1000)
-                        .HasMaxLength(1000)
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -479,7 +391,6 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("TreatmentServices", (string)null);
                     b.ToTable("TreatmentServices", (string)null);
                 });
 
@@ -535,33 +446,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
-                {
-                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
-                        .WithMany("Appointments")
-                        .HasForeignKey("CycleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("InfertilityTreatment.Entity.Entities.Doctor", "Doctor")
-                        .WithMany("Appointments")
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("InfertilityTreatment.Entity.Entities.DoctorSchedule", "DoctorSchedule")
-                        .WithMany()
-                        .HasForeignKey("DoctorScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Doctor");
-
-                    b.Navigation("DoctorSchedule");
-
-                    b.Navigation("TreatmentCycle");
-                });
-
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.User", "User")
@@ -582,17 +466,6 @@ namespace InfertilityTreatment.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.DoctorSchedule", b =>
-                {
-                    b.HasOne("InfertilityTreatment.Entity.Entities.Doctor", "Doctor")
-                        .WithMany()
-                        .HasForeignKey("DoctorId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Doctor");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
@@ -662,14 +535,7 @@ namespace InfertilityTreatment.Data.Migrations
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Doctor", b =>
                 {
-                    b.Navigation("Appointments");
-
                     b.Navigation("TreatmentCycles");
-                });
-
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
-                {
-                    b.Navigation("Appointments");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPackage", b =>

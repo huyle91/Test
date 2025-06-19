@@ -5,9 +5,11 @@ using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
 using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
 using InfertilityTreatment.Entity.DTOs.TreatmentServices;
+using InfertilityTreatment.Entity.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -22,6 +24,7 @@ namespace InfertilityTreatment.API.Controllers
             _appointmentService = appointmentService;
         }
 
+        [Authorize(Roles = "Doctor")]
         [HttpPost]
         public async Task<ActionResult<ApiResponseDto<AppointmentResponseDto>>> CreateAppointment([FromBody] CreateAppointmentDto dto)
         {
@@ -40,25 +43,28 @@ namespace InfertilityTreatment.API.Controllers
             }
         }
 
+        [Authorize]
         [HttpGet]
         public async Task<ActionResult<ApiResponseDto<PaginatedResultDto<AppointmentResponseDto>>>> GetAppointments(
-            [FromQuery] int userId,
-            [FromQuery] string role,
+            [FromQuery, Required] int userId,
+            [FromQuery, Required] UserRole role,
             [FromQuery] PaginationQueryDTO pagination,
             [FromQuery] DateTime? date = null)
         {
             try
             {
+                pagination.PageNumber = pagination.PageNumber <= 0 ? 1 : pagination.PageNumber;
+                pagination.PageSize = pagination.PageSize <= 0 ? 100 : pagination.PageSize;
                 if (pagination.PageSize > 100) pagination.PageSize = 100;
                 if (pagination.PageNumber < 1) pagination.PageNumber = 1;
 
                 PaginatedResultDto<AppointmentResponseDto> result;
 
-                if (role == "Customer")
+                if (role == UserRole.Customer)
                 {
                     result = await _appointmentService.GetAppointmentsByCustomerAsync(userId, pagination);
                 }
-                else if (role == "Doctor" && date.HasValue)
+                else if (role == UserRole.Doctor && date.HasValue)
                 {
                     result = await _appointmentService.GetAppointmentsByDoctorAsync(userId, date.Value, pagination);
                 }
@@ -71,7 +77,8 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, ApiResponseDto<string>.CreateError("An error occurred while retrieving appointments."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError(AppointmentMessages.UnknownError));
             }
         }
 
@@ -84,6 +91,7 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<AppointmentResponseDto>.CreateSuccess(result));
         }
 
+        [Authorize]
         [HttpPut("{id}/reschedule")]
         public async Task<ActionResult<ApiResponseDto<AppointmentResponseDto>>> RescheduleAppointment(int id, [FromBody] RescheduleAppointmentDto dto)
         {
@@ -98,10 +106,12 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, ApiResponseDto<string>.CreateError("An error occurred while rescheduling appointment."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                   ApiResponseDto<string>.CreateError(AppointmentMessages.UnknownError));
             }
         }
 
+        [Authorize]
         [HttpPut("{id}/cancel")]
         public async Task<ActionResult<ApiResponseDto<AppointmentResponseDto>>> CancelAppointment(int id)
         {
@@ -112,7 +122,8 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, ApiResponseDto<string>.CreateError("An error occurred while cancelling appointment."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError(AppointmentMessages.UnknownError));
             }
         }
 
@@ -124,6 +135,8 @@ namespace InfertilityTreatment.API.Controllers
         {
             try
             {
+                pagination.PageNumber = pagination.PageNumber <= 0 ? 1 : pagination.PageNumber;
+                pagination.PageSize = pagination.PageSize <= 0 ? 100 : pagination.PageSize;
                 if (pagination.PageSize > 100) pagination.PageSize = 100;
                 if (pagination.PageNumber < 1) pagination.PageNumber = 1;
 
@@ -132,7 +145,8 @@ namespace InfertilityTreatment.API.Controllers
             }
             catch (Exception)
             {
-                return StatusCode(500, ApiResponseDto<string>.CreateError("An error occurred while retrieving doctor availability."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                   ApiResponseDto<string>.CreateError(AppointmentMessages.UnknownError));
             }
         }
     }

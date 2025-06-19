@@ -1,11 +1,13 @@
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Threading.Tasks;
 
 namespace InfertilityTreatment.API.Controllers
 {
+
     [Route("api/doctor-schedules")]
     [ApiController]
     public class DoctorScheduleController : ControllerBase
@@ -28,10 +30,13 @@ namespace InfertilityTreatment.API.Controllers
         [HttpGet("by-doctor/{doctorId}")]
         public async Task<IActionResult> GetByDoctorId(int doctorId, [FromQuery] PaginationQueryDTO pagination)
         {
+            pagination.PageNumber = pagination.PageNumber <= 0 ? 1 : pagination.PageNumber;
+            pagination.PageSize = pagination.PageSize <= 0 ? 100 : pagination.PageSize;
             var result = await _service.GetByDoctorIdAsync(doctorId, pagination);
             return Ok(ApiResponseDto<PaginatedResultDto<DoctorScheduleDto>>.CreateSuccess(result));
         }
 
+        [Authorize(Roles = "Doctor")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDoctorScheduleDto dto)
         {
@@ -39,6 +44,7 @@ namespace InfertilityTreatment.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponseDto<DoctorScheduleDto>.CreateSuccess(created, "DoctorSchedule created successfully"));
         }
 
+        [Authorize(Roles = "Doctor")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateDoctorScheduleDto dto)
         {
@@ -46,6 +52,7 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<DoctorScheduleDto>.CreateSuccess(updated, "DoctorSchedule updated successfully"));
         }
 
+        [Authorize(Roles = "Doctor")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

@@ -10,10 +10,10 @@ using System.Threading.Tasks;
 
 namespace InfertilityTreatment.Data.Repositories.Implementations
 {
-    public class DoctorScheduleRepository : IDoctorScheduleRepository
+    public class DoctorScheduleRepository :IDoctorScheduleRepository
     {
         private readonly ApplicationDbContext _context;
-        public DoctorScheduleRepository(ApplicationDbContext context)
+        public DoctorScheduleRepository(ApplicationDbContext context) 
         {
             _context = context;
         }
@@ -26,7 +26,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public async Task<PaginatedResultDto<DoctorSchedule>> GetByDoctorIdAsync(int doctorId, PaginationQueryDTO pagination)
         {
-            var query = _context.DoctorSchedules.Where(ds => ds.DoctorId == doctorId);
+            var query = _context.DoctorSchedules.Where(ds => ds.DoctorId == doctorId && ds.IsActive);
             var totalCount = await query.CountAsync();
             var items = await query.Skip((pagination.PageNumber - 1) * pagination.PageSize).Take(pagination.PageSize).ToListAsync();
             return new PaginatedResultDto<DoctorSchedule>(
@@ -39,6 +39,19 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public async Task<DoctorSchedule> CreateAsync(DoctorSchedule dto)
         {
+            // Validate: start < end
+            if (dto.StartTime >= dto.EndTime)
+                throw new ArgumentException("StartTime must be less than EndTime");
+
+            // Check for duplicate schedule for the same doctor and time slot
+            bool exists = await _context.DoctorSchedules.AnyAsync(ds =>
+                ds.DoctorId == dto.DoctorId &&
+                ds.StartTime == dto.StartTime &&
+                ds.EndTime == dto.EndTime &&
+                ds.IsActive);
+            if (exists)
+                throw new InvalidOperationException("Doctor already has this schedule slot.");
+
             var entity = new DoctorSchedule
             {
                 DoctorId = dto.DoctorId,
@@ -52,40 +65,35 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public async Task<bool> UpdateAsync(DoctorSchedule dto)
         {
-            //var entity = await _context.DoctorSchedules.FindAsync(dto.Id);
-            //if (entity == null) return false;
-            //entity.DoctorId = dto.DoctorId;
-            //entity.StartTime = dto.StartTime;
-            //entity.EndTime = dto.EndTime;
             _context.DoctorSchedules.Update(dto);
             return await _context.SaveChangesAsync() > 0;
         }
 
         public async Task<bool> DeleteAsync(int id)
         {
+
             var entity = await _context.DoctorSchedules.FindAsync(id);
-            if (entity == null) return false;
-            _context.DoctorSchedules.Remove(entity);
+            if (entity == null)
+                return false;
+
+            if (entity != null)
+            {
+                // Soft delete
+                entity.IsActive = false;
+                entity.UpdatedAt = DateTime.UtcNow;
+                _context.DoctorSchedules.Update(entity);
+            }
             return await _context.SaveChangesAsync() > 0;
         }
 
-        private DoctorScheduleDto MapToDto(DoctorSchedule entity)
-        {
-            return new DoctorScheduleDto
-            {
-                Id = entity.GetType().GetProperty("Id") != null ? (int)entity.GetType().GetProperty("Id").GetValue(entity) : 0,
-                DoctorId = entity.DoctorId,
-                StartTime = entity.StartTime,
-                EndTime = entity.EndTime
-            };
-        }
+
 
         public async Task<List<DoctorSchedule>> GetSchedulesByDoctorAndDateAsync(int doctorId, DateTime date)
         {
             // Assuming schedules are recurring, filter by day of week
             // If schedules are for specific dates, add a Date property to DoctorSchedule and filter by that
             return await _context.DoctorSchedules
-                .Where(ds => ds.DoctorId == doctorId)
+                .Where(ds => ds.DoctorId == doctorId && ds.IsActive)
                 .ToListAsync();
         }
 

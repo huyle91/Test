@@ -47,6 +47,8 @@ namespace InfertilityTreatment.Entity.Entities
 
         public virtual ICollection<TreatmentPhase> TreatmentPhases { get; set; } = new List<TreatmentPhase>();
         //public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
+        //public virtual ICollection<TreatmentPhase> TreatmentPhases { get; set; } = new List<TreatmentPhase>();
+        public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
         //public virtual ICollection<TestResult> TestResults { get; set; } = new List<TestResult>();
         //public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
     }

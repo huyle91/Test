@@ -9,13 +9,16 @@ namespace InfertilityTreatment.API.Controllers
 {
     [Route("api/doctors/")]
     [ApiController]
+
     public class DoctorsController : ControllerBase
     {
         private readonly IDoctorService _doctorService;
+        private readonly IDoctorScheduleService _doctorScheduleService;
 
-        public DoctorsController(IDoctorService doctorService)
+        public DoctorsController(IDoctorService doctorService, IDoctorScheduleService doctorScheduleService)
         {
             _doctorService = doctorService;
+            _doctorScheduleService = doctorScheduleService;
         }
 
         [HttpGet]
@@ -59,18 +62,5 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<DoctorDetailDto>.CreateSuccess(updated, "Availability toggled successfully"));
         }
 
-        [HttpGet("search")]
-        public async Task<IActionResult> SearchDoctors([FromQuery] DoctorSearchDto searchDto)
-        {
-            var doctors = await _doctorService.SearchDoctorsAsync(searchDto);
-            return Ok(ApiResponseDto<List<DoctorResponseDto>>.CreateSuccess(doctors));
-        }
-
-        //[HttpPost]
-        //public async Task<IActionResult> CreateDoctor([FromBody] CreateDoctorDto createDoctorDto)
-        //{
-        //    var doctor = await _doctorService.CreateDoctorAsync(createDoctorDto);
-        //    return CreatedAtAction(nameof(GetDoctorById), new { id = doctor.Id }, ApiResponseDto<DoctorDetailDto>.CreateSuccess(doctor, "Doctor created successfully"));
-        //}
     }
 }

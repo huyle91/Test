@@ -20,10 +20,14 @@ namespace InfertilityTreatment.Data.Context
         public DbSet<TreatmentService> TreatmentServices { get; set; }
         public DbSet<TreatmentPackage> TreatmentPackages { get; set; }
         public DbSet<TreatmentCycle> TreatmentCycles { get; set; }
+
+        public DbSet<DoctorSchedule> DoctorSchedules { get; set; }
+
+        //public DbSet<TreatmentPhase> TreatmentPhases { get; set; }
         public DbSet<TreatmentPhase> TreatmentPhases { get; set; }
 
         // Appointment & Monitoring DbSets
-        //public DbSet<Appointment> Appointments { get; set; }
+        public DbSet<Appointment> Appointments { get; set; }
         //public DbSet<TestResult> TestResults { get; set; }
 
         // Medication DbSets
@@ -33,7 +37,7 @@ namespace InfertilityTreatment.Data.Context
         // Content & Feedback DbSets
         //public DbSet<BlogPost> BlogPosts { get; set; }
         //public DbSet<Review> Reviews { get; set; }
-        //public DbSet<Notification> Notifications { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

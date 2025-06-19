@@ -7,6 +7,8 @@ using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
 using InfertilityTreatment.Entity.DTOs.TreatmentServices;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using InfertilityTreatment.Entity.DTOs.Appointments;
+using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -73,6 +75,16 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<TreatmentPhase, PhaseResponseDto>().ReverseMap();
             CreateMap<TreatmentPhase, CreatePhaseDto>().ReverseMap();
             CreateMap<TreatmentPhase, UpdatePhaseDto>().ReverseMap();
+
+            //Appointment
+            CreateMap<Appointment, AppointmentDto>();
+            CreateMap<CreateAppointmentDto, Appointment>();
+            CreateMap<UpdateAppointmentDto, Appointment>();
+
+            //DoctorSchedule
+            CreateMap<DoctorSchedule, DoctorScheduleDto>();
+            CreateMap<CreateDoctorScheduleDto, DoctorSchedule>();
+            CreateMap<UpdateDoctorScheduleDto, DoctorSchedule>();
         }
     }
 }

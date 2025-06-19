@@ -7,6 +7,8 @@ using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
 using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.Enums;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -20,41 +22,101 @@ namespace InfertilityTreatment.Business.Services
         private readonly ITreatmentCycleRepository _treatmentCycleRepository;
         private readonly ITreatmentPhaseRepository _treatmentPhaseRepository;
         private readonly IDoctorRepository _doctorRepository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
-        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper,ITreatmentPhaseRepository treatmentPhaseRepository,IDoctorRepository doctorRepository)
+        private readonly ILogger<CycleService> _logger;
+        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper,ITreatmentPhaseRepository treatmentPhaseRepository,IDoctorRepository doctorRepository, ILogger<CycleService> logger, IUnitOfWork unitOfWork)
         {
             _treatmentCycleRepository = treatmentCycleRepository;
             _mapper = mapper;
             _treatmentPhaseRepository = treatmentPhaseRepository;
             _doctorRepository = doctorRepository;
+            _logger = logger;
+            _unitOfWork = unitOfWork;
         }
-        public Task<PhaseResponseDto> AddPhaseAsync(int cycleId, CreatePhaseDto createPhaseDto)
+        public async Task<PhaseResponseDto> AddPhaseAsync(int cycleId, CreatePhaseDto createPhaseDto)
         {
-          var phase = _mapper.Map<TreatmentPhase>(createPhaseDto);
-            phase.CycleId = cycleId;
-            return _treatmentPhaseRepository.AddTreatmentPhaseAsync(phase)
-                .ContinueWith(t => _mapper.Map<PhaseResponseDto>(t.Result));
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
+            {
+                var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                if (cycle == null)
+                    throw new ArgumentException("Invalid cycle ID");
+
+                var phase = _mapper.Map<TreatmentPhase>(createPhaseDto);
+                phase.CycleId = cycleId;
+
+                await _treatmentPhaseRepository.AddTreatmentPhaseAsync(phase);
+                await _unitOfWork.SaveChangesAsync();
+
+                await _unitOfWork.CommitTransactionAsync();
+
+                return _mapper.Map<PhaseResponseDto>(phase);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
+
+
         public async Task<bool> AssignDoctorToCycleAsync(int cycleId, int doctorId)
         {
             try
             {
-                // Validate doctor exists and is active
+                // 1. Validate doctor
                 var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
-                if (doctor == null || !doctor.IsActive)
-                    return false;
+                if (doctor is null)
+                {
+                    _logger.LogWarning("Doctor with ID {DoctorId} not found", doctorId);
+                    throw new ArgumentException($"Doctor with ID {doctorId} does not exist");
+                }
 
+                if (!doctor.IsActive)
+                {
+                    _logger.LogWarning("Doctor with ID {DoctorId} is inactive", doctorId);
+                    throw new InvalidOperationException("Cannot assign an inactive doctor to a treatment cycle");
+                }
+
+                // 2. Validate treatment cycle
                 var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
-                if (cycle == null || cycle.Status == CycleStatus.Completed)
-                    return false;
+                if (cycle is null)
+                {
+                    _logger.LogWarning($"Treatment cycle with ID {cycleId} not found", cycleId);
+                    throw new ArgumentException($"Treatment cycle with ID {cycleId} does not exist");
+                }
 
-                return await _treatmentCycleRepository.UpdateDoctorAsync(cycleId, doctorId);
+                if (cycle.Status == CycleStatus.Completed)
+                {
+                    _logger.LogWarning($"Cannot assign doctor to completed cycle {cycleId}", cycleId);
+                    throw new InvalidOperationException("Cannot assign doctor to a completed treatment cycle");
+                }
+
+                // 3. Assign doctor
+                var updated = await _treatmentCycleRepository.UpdateDoctorAsync(cycleId, doctorId);
+                if (!updated)
+                {
+                    _logger.LogWarning($"Failed to assign doctor {doctorId} to cycle {cycleId}", doctorId, cycleId);
+                    throw new InvalidOperationException("Failed to assign doctor to treatment cycle");
+                }
+
+                _logger.LogInformation($"Successfully assigned doctor {doctorId}  to cycle  {cycleId}", doctorId, cycleId);
+                return true;
+            }
+            catch (DbUpdateException ex)
+            {
+                _logger.LogError(ex, $"Database error while assigning doctor {doctorId} to cycle {cycleId}", doctorId, cycleId);
+                throw new InvalidOperationException("A database error occurred while assigning the doctor", ex);
             }
             catch (Exception ex)
             {
-                return false;
+                _logger.LogError(ex, $"Unexpected error assigning doctor {doctorId} to cycle {cycleId}", doctorId, cycleId);
+                throw;
             }
         }
+
         public Task<decimal> CalculateCycleCostAsync(int cycleId)
         {
            return _treatmentCycleRepository.CalculatePhaseCostAsync(cycleId);

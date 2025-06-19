@@ -8,6 +8,7 @@ using InfertilityTreatment.Entity.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -63,8 +64,13 @@ namespace InfertilityTreatment.API.Controllers
         {
             try
             {
-                var cycleResponse = await _cycleService.GetCycleByIdAsync(id);
-                return Ok(ApiResponseDto<CycleDetailDto>.CreateSuccess(cycleResponse, "Cycle details retrieved successfully."));
+                var cycle = await _cycleService.GetCycleByIdAsync(id);
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (cycle.CustomerId != userId && !User.IsInRole("Admin") && cycle.DoctorId != userId)
+                {
+                    return Forbid(); 
+                }
+                return Ok(ApiResponseDto<CycleDetailDto>.CreateSuccess(cycle, "Cycle details retrieved successfully."));
             }
             catch (Exception)
             {
@@ -77,6 +83,12 @@ namespace InfertilityTreatment.API.Controllers
         {
             try
             {
+                var cycle = await _cycleService.GetCycleByIdAsync(id);
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                if (cycle.CustomerId != userId && cycle.DoctorId != userId && !User.IsInRole("Admin"))
+                {
+                    return Forbid();
+                }
                 var result = await _cycleService.UpdateCycleAsync(id, updateCycleDto);
                 if (result)
                     return Ok(ApiResponseDto<string>.CreateSuccess(null, "Cycle updated successfully."));

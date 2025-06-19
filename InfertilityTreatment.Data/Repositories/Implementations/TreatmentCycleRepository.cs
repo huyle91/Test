@@ -30,11 +30,14 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             return new PaginatedResultDto<TreatmentCycle>(pagedData, totalCount, filter.PageNumber, filter.PageSize);
         }
-        
+
 
         public async Task<PaginatedResultDto<TreatmentCycle>> GetCyclesByDoctorAsync(int doctorId, TreatmentCycleFilterDto filter)
         {
             var query = _context.TreatmentCycles
+          .Include(tc => tc.Customer).ThenInclude(c => c.User)
+          .Include(tc => tc.Doctor).ThenInclude(d => d.User)
+          .Include(tc => tc.TreatmentPackage)
           .Where(tc => tc.DoctorId == doctorId && tc.IsActive)
           .OrderByDescending(tc => tc.CreatedAt)
           .AsQueryable();
@@ -127,7 +130,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
         public Task<bool> UpdateTreatmentCycleAsync(TreatmentCycle treatmentCycle)
         {
-           _context.TreatmentCycles.Update(treatmentCycle);
+            _context.TreatmentCycles.Update(treatmentCycle);
             return _context.SaveChangesAsync().ContinueWith(t => t.Result > 0);
         }
     }

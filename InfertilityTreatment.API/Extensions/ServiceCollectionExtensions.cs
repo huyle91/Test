@@ -38,6 +38,8 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<ITreatmentPackageRepository, TreatmentPackageRepository>();
             services.AddScoped<ITreatmentPackageService, TreatmentPackageService>();
 
+            services.AddScoped<ITreatmentPhaseRepository, TreatmentPhaseRepository>();
+            services.AddScoped<ICycleService, CycleService>();
             // Business Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IDoctorService, DoctorService>();

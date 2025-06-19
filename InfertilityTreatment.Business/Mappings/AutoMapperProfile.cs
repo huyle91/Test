@@ -1,10 +1,12 @@
 using AutoMapper;
-using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.DTOs.Auth;
-using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.DTOs.Doctors;
-using InfertilityTreatment.Entity.DTOs.TreatmentServices;
+using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
 using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
+using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
+using InfertilityTreatment.Entity.DTOs.TreatmentServices;
+using InfertilityTreatment.Entity.DTOs.Users;
+using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.DTOs.Appointments;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
 
@@ -56,6 +58,10 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<TreatmentService, TreatmentServiceDto>();
             CreateMap<CreateTreatmentServiceDto, TreatmentService>();
             CreateMap<UpdateTreatmentServiceDto, TreatmentService>();
+            CreateMap<CreateCycleDto, TreatmentCycle>();
+            CreateMap<TreatmentCycle, CycleResponseDto>().ReverseMap();
+            CreateMap<TreatmentCycle, CycleDetailDto>().ReverseMap();
+            CreateMap<TreatmentCycle, UpdateCycleDto>().ReverseMap();
 
             //TreatmentPakage
             CreateMap<TreatmentPackage, TreatmentPackageDto>();
@@ -64,6 +70,11 @@ namespace InfertilityTreatment.Business.Mappings
 
             // CustomerProfile
             CreateMap<Customer, CustomerProfileDto>();
+
+            //TreatmentPhase
+            CreateMap<TreatmentPhase, PhaseResponseDto>().ReverseMap();
+            CreateMap<TreatmentPhase, CreatePhaseDto>().ReverseMap();
+            CreateMap<TreatmentPhase, UpdatePhaseDto>().ReverseMap();
 
             //Appointment
             CreateMap<Appointment, AppointmentDto>();

@@ -33,6 +33,7 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet]
+        [Authorize(Roles = nameof(UserRole.Doctor) + "," + nameof(UserRole.Manager))]
         public async Task<IActionResult> GetTreatmentCycles([FromQuery] TreatmentCycleFilterDto filter)
         {
             if (filter.PageSize > 100)

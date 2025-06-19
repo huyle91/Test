@@ -71,18 +71,18 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             return treatmentCycle;
         }
 
-        public Task<decimal> CalculatePhaseCostAsync(int cycleId)
+        public async Task<decimal> CalculatePhaseCostAsync(int cycleId)
         {
-            var cycle = _context.TreatmentCycles
-                 .Include(c => c.TreatmentPhases)
-                 .FirstOrDefault(c => c.Id == cycleId);
+            var cycle = await _context.TreatmentCycles
+                .Include(c => c.TreatmentPhases)
+                .FirstOrDefaultAsync(c => c.Id == cycleId);
+
             if (cycle == null)
-            {
-                throw new Exception("Cycle not found.");
-            }
-            decimal totalCost = cycle.TreatmentPhases.Sum(p => p.Cost);
-            return Task.FromResult(totalCost);
+                throw new KeyNotFoundException("Cycle not found.");
+
+            return cycle.TreatmentPhases.Sum(p => p.Cost);
         }
+
 
         public async Task<TreatmentCycle> GetCycleByIdAsync(int cycleId)
         {

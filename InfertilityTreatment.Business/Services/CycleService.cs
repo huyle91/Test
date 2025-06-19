@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using InfertilityTreatment.Business.Interfaces;
+using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
@@ -18,12 +19,14 @@ namespace InfertilityTreatment.Business.Services
     {
         private readonly ITreatmentCycleRepository _treatmentCycleRepository;
         private readonly ITreatmentPhaseRepository _treatmentPhaseRepository;
+        private readonly IDoctorRepository _doctorRepository;
         private readonly IMapper _mapper;
-        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper,ITreatmentPhaseRepository treatmentPhaseRepository)
+        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper,ITreatmentPhaseRepository treatmentPhaseRepository,IDoctorRepository doctorRepository)
         {
             _treatmentCycleRepository = treatmentCycleRepository;
             _mapper = mapper;
             _treatmentPhaseRepository = treatmentPhaseRepository;
+            _doctorRepository = doctorRepository;
         }
         public Task<PhaseResponseDto> AddPhaseAsync(int cycleId, CreatePhaseDto createPhaseDto)
         {
@@ -32,10 +35,25 @@ namespace InfertilityTreatment.Business.Services
             return _treatmentPhaseRepository.AddTreatmentPhaseAsync(phase)
                 .ContinueWith(t => _mapper.Map<PhaseResponseDto>(t.Result));
         }
-        public Task<bool> AssignDoctorToCycleAsync(int cycleId, int doctorId)
+        public async Task<bool> AssignDoctorToCycleAsync(int cycleId, int doctorId)
         {
-            _treatmentCycleRepository.UpdateDoctorAsync(cycleId, doctorId);
-            return Task.FromResult(true);
+            try
+            {
+                // Validate doctor exists and is active
+                var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
+                if (doctor == null || !doctor.IsActive)
+                    return false;
+
+                var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                if (cycle == null || cycle.Status == CycleStatus.Completed)
+                    return false;
+
+                return await _treatmentCycleRepository.UpdateDoctorAsync(cycleId, doctorId);
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
         public Task<decimal> CalculateCycleCostAsync(int cycleId)
         {

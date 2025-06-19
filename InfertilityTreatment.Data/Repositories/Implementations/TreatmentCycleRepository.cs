@@ -78,7 +78,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .FirstOrDefaultAsync(c => c.Id == cycleId);
 
             if (cycle == null)
-                throw new KeyNotFoundException("Cycle not found.");
+                throw new ArgumentException($"Treatment cycle with ID {cycleId} not found.", nameof(cycleId));
 
             return cycle.TreatmentPhases.Sum(p => p.Cost);
         }

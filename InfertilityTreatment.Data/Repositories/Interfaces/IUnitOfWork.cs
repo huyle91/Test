@@ -7,6 +7,7 @@
         ICustomerRepository Customers { get; }
         ITreatmentCycleRepository TreatmentCycles { get; }
         IRefreshTokenRepository RefreshTokens { get; }
+        IAppointmentRepository Appointments { get; } // Added
 
         // Transaction Methods
         Task<int> SaveChangesAsync();

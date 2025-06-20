@@ -15,6 +15,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         private ICustomerRepository? _customers;
         private ITreatmentCycleRepository? _treatmentCycles;
         private IRefreshTokenRepository? _refreshTokens;
+        private IAppointmentRepository? _appointments;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -26,6 +27,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         public ICustomerRepository Customers => _customers ??= new CustomerRepository(_context);
         public ITreatmentCycleRepository TreatmentCycles => _treatmentCycles ??= new TreatmentCycleRepository(_context);
         public IRefreshTokenRepository RefreshTokens => _refreshTokens ??= new RefreshTokenRepository(_context);
+        public IAppointmentRepository Appointments => _appointments ??= new AppointmentRepository(_context);
 
         public async Task<int> SaveChangesAsync()
         {

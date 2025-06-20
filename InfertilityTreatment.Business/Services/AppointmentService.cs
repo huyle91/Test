@@ -20,19 +20,19 @@ namespace InfertilityTreatment.Business.Services
 {
     public class AppointmentService : IAppointmentService
     {
-        private readonly IAppointmentRepository _repository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-        public AppointmentService(IAppointmentRepository repository, IMapper mapper)
+        public AppointmentService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            _repository = repository;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
         public async Task<AppointmentResponseDto> CreateAppointmentAsync(CreateAppointmentDto dto)
         {
             // Check for conflict: same doctor, same date, same slot
-            var conflict = await _repository.GetByDoctorAndScheduleAsync(dto.DoctorId, dto.ScheduledDateTime, dto.DoctorScheduleId);
+            var conflict = await _unitOfWork.Appointments.GetByDoctorAndScheduleAsync(dto.DoctorId, dto.ScheduledDateTime, dto.DoctorScheduleId);
             if (conflict != null)
             {
                 throw new InvalidOperationException("Doctor already has an appointment at this time slot.");
@@ -49,7 +49,8 @@ namespace InfertilityTreatment.Business.Services
                 Status = AppointmentStatus.Scheduled
             };
 
-            var created = await _repository.CreateAsync(appointment);
+            var created = await _unitOfWork.Appointments.CreateAsync(appointment);
+            await _unitOfWork.SaveChangesAsync();
 
             return new AppointmentResponseDto
             {
@@ -66,7 +67,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<PaginatedResultDto<AppointmentResponseDto>> GetAppointmentsByCustomerAsync(int customerId, PaginationQueryDTO pagination)
         {
-            var list = await _repository.GetByCustomerAsync(customerId, pagination);
+            var list = await _unitOfWork.Appointments.GetByCustomerAsync(customerId, pagination);
             var dtoList = list.Items.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
@@ -89,7 +90,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<PaginatedResultDto<AppointmentResponseDto>> GetAppointmentsByDoctorAsync(int doctorId, DateTime date, PaginationQueryDTO pagination)
         {
-            var list = await _repository.GetByDoctorAndDateAsync(doctorId, date, pagination);
+            var list = await _unitOfWork.Appointments.GetByDoctorAndDateAsync(doctorId, date, pagination);
             var dtoList = list.Items.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
@@ -112,11 +113,11 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto> RescheduleAppointmentAsync(int id, int doctorScheduleId, DateTime scheduledDateTime)
         {
-            var appointment = await _repository.GetByIdAsync(id);
+            var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
             if (appointment == null) return null;
 
             // Check for conflict: same doctor, same date, same slot (excluding current appointment)
-            var conflict = await _repository.GetByDoctorAndScheduleAsync(appointment.DoctorId, scheduledDateTime, doctorScheduleId);
+            var conflict = await _unitOfWork.Appointments.GetByDoctorAndScheduleAsync(appointment.DoctorId, scheduledDateTime, doctorScheduleId);
             if (conflict != null && conflict.Id != id)
             {
                 throw new InvalidOperationException("Doctor already has an appointment at this time slot.");
@@ -125,7 +126,8 @@ namespace InfertilityTreatment.Business.Services
             appointment.DoctorScheduleId = doctorScheduleId;
             appointment.ScheduledDateTime = scheduledDateTime;
             appointment.UpdatedAt = DateTime.UtcNow;
-            await _repository.UpdateAsync(appointment);
+            await _unitOfWork.Appointments.UpdateAsync(appointment);
+            await _unitOfWork.SaveChangesAsync();
 
             return new AppointmentResponseDto
             {
@@ -142,11 +144,12 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto> CancelAppointmentAsync(int id)
         {
-            var appointment = await _repository.GetByIdAsync(id);
+            var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
             if (appointment == null) throw new Exception("Appointment not found");
 
             appointment.Status = AppointmentStatus.Cancelled;
-            await _repository.UpdateAsync(appointment);
+            await _unitOfWork.Appointments.UpdateAsync(appointment);
+            await _unitOfWork.SaveChangesAsync();
 
             return new AppointmentResponseDto
             {
@@ -163,7 +166,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<PaginatedResultDto<DoctorScheduleDto>> GetDoctorAvailabilityAsync(int doctorId, DateTime date, PaginationQueryDTO pagination)
         {
-            var entityResult = await _repository.GetDoctorAvailabilityAsync(doctorId, date, pagination);
+            var entityResult = await _unitOfWork.Appointments.GetDoctorAvailabilityAsync(doctorId, date, pagination);
             return new PaginatedResultDto<DoctorScheduleDto>(
                 _mapper.Map<List<DoctorScheduleDto>>(entityResult.Items),
                 entityResult.TotalCount,
@@ -174,7 +177,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto?> GetByIdAsync(int id)
         {
-            var appointment = await _repository.GetByIdAsync(id);
+            var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
             if (appointment == null) return null;
             return new AppointmentResponseDto
             {

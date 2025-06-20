@@ -33,6 +33,10 @@ namespace InfertilityTreatment.API.Controllers
                 var result = await _appointmentService.CreateAppointmentAsync(dto);
                 return Ok(ApiResponseDto<AppointmentResponseDto>.CreateSuccess(result, "Appointment created successfully."));
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
             catch (InvalidOperationException ex)
             {
                 return Conflict(ApiResponseDto<string>.CreateError(ex.Message));
@@ -64,8 +68,12 @@ namespace InfertilityTreatment.API.Controllers
                 {
                     result = await _appointmentService.GetAppointmentsByCustomerAsync(userId, pagination);
                 }
-                else if (role == UserRole.Doctor && date.HasValue)
+                else if (role == UserRole.Doctor)
                 {
+                    if (!date.HasValue)
+                    {
+                        return BadRequest(ApiResponseDto<string>.CreateError("Missing date parameter for doctor."));
+                    }
                     result = await _appointmentService.GetAppointmentsByDoctorAsync(userId, date.Value, pagination);
                 }
                 else
@@ -74,6 +82,10 @@ namespace InfertilityTreatment.API.Controllers
                 }
 
                 return Ok(ApiResponseDto<PaginatedResultDto<AppointmentResponseDto>>.CreateSuccess(result, "Appointments retrieved successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ApiResponseDto<string>.CreateError(ex.Message));
             }
             catch (Exception)
             {
@@ -100,6 +112,10 @@ namespace InfertilityTreatment.API.Controllers
                 var result = await _appointmentService.RescheduleAppointmentAsync(id, dto.DoctorScheduleId, dto.ScheduledDateTime);
                 return Ok(ApiResponseDto<AppointmentResponseDto>.CreateSuccess(result, "Appointment rescheduled successfully."));
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
             catch (InvalidOperationException ex)
             {
                 return Conflict(ApiResponseDto<string>.CreateError(ex.Message));
@@ -119,6 +135,14 @@ namespace InfertilityTreatment.API.Controllers
             {
                 var result = await _appointmentService.CancelAppointmentAsync(id);
                 return Ok(ApiResponseDto<AppointmentResponseDto>.CreateSuccess(result, "Appointment cancelled successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(ApiResponseDto<string>.CreateError(ex.Message));
             }
             catch (Exception)
             {

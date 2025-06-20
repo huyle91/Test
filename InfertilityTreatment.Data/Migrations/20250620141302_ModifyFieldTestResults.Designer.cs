@@ -4,6 +4,7 @@ using InfertilityTreatment.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfertilityTreatment.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250620141302_ModifyFieldTestResults")]
+    partial class ModifyFieldTestResults
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -373,7 +376,7 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasIndex("CycleId");
 
-                    b.ToTable("TestResults", (string)null);
+                    b.ToTable("TestResults");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
@@ -720,9 +723,9 @@ namespace InfertilityTreatment.Data.Migrations
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TestResult", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", "Appointment")
-                        .WithMany("TestResults")
+                        .WithMany()
                         .HasForeignKey("AppointmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
@@ -783,11 +786,6 @@ namespace InfertilityTreatment.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Cycle");
-                });
-
-            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
-                {
-                    b.Navigation("TestResults");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>

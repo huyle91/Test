@@ -180,6 +180,51 @@ GO
 BEGIN TRANSACTION;
 GO
 
+CREATE TABLE [notifications] (
+    [Id] int NOT NULL IDENTITY,
+    [UserId] int NOT NULL,
+    [Title] nvarchar(200) NOT NULL,
+    [Message] nvarchar(max) NOT NULL,
+    [Type] nvarchar(50) NOT NULL,
+    [IsRead] bit NOT NULL,
+    [RelatedEntityType] nvarchar(100) NULL,
+    [RelatedEntityId] int NULL,
+    [ScheduledAt] datetime2 NULL,
+    [SentAt] datetime2 NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_notifications] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_notifications_Users_UserId] FOREIGN KEY ([UserId]) REFERENCES [Users] ([Id]) ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX [IX_notifications_UserId] ON [notifications] ([UserId]);
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250616163935_AddNotification', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+EXEC sp_rename N'[notifications]', N'Notifications';
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250616171431_RenameNotificationsTable', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
 CREATE TABLE [Appointments] (
     [Id] int NOT NULL IDENTITY,
     [CycleId] int NOT NULL,
@@ -275,6 +320,109 @@ GO
 
 INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
 VALUES (N'20250618143728_ModifyAppointments', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+CREATE TABLE [TreatmentPhases] (
+    [Id] int NOT NULL IDENTITY,
+    [CycleId] int NOT NULL,
+    [PhaseName] nvarchar(200) NOT NULL,
+    [PhaseOrder] int NOT NULL,
+    [Status] nvarchar(max) NOT NULL,
+    [StartDate] datetime2 NULL,
+    [EndDate] datetime2 NULL,
+    [Cost] decimal(12,2) NOT NULL,
+    [Instructions] nvarchar(max) NULL,
+    [Notes] nvarchar(max) NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_TreatmentPhases] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_TreatmentPhases_TreatmentCycles_CycleId] FOREIGN KEY ([CycleId]) REFERENCES [TreatmentCycles] ([Id]) ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX [IX_TreatmentPhases_CycleId] ON [TreatmentPhases] ([CycleId]);
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250619110253_AddTreatmentCycles', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+DROP INDEX [IX_TreatmentPhases_CycleId] ON [TreatmentPhases];
+GO
+
+CREATE TABLE [TestResults] (
+    [Id] int NOT NULL IDENTITY,
+    [CycleId] int NOT NULL,
+    [TestType] tinyint NOT NULL,
+    [TestDate] datetime2 NOT NULL,
+    [Results] nvarchar(max) NULL,
+    [ReferenceRange] nvarchar(100) NULL,
+    [Status] nvarchar(50) NOT NULL,
+    [DoctorNotes] nvarchar(max) NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_TestResults] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_TestResults_TreatmentCycles_CycleId] FOREIGN KEY ([CycleId]) REFERENCES [TreatmentCycles] ([Id]) ON DELETE CASCADE
+);
+GO
+
+CREATE UNIQUE INDEX [IX_TreatmentPhases_CycleId_PhaseOrder] ON [TreatmentPhases] ([CycleId], [PhaseOrder]);
+GO
+
+CREATE INDEX [IX_TestResults_CycleId] ON [TestResults] ([CycleId]);
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250620134544_AddTestResults', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [TestResults] ADD [AppointmentId] int NOT NULL DEFAULT 0;
+GO
+
+CREATE INDEX [IX_TestResults_AppointmentId] ON [TestResults] ([AppointmentId]);
+GO
+
+ALTER TABLE [TestResults] ADD CONSTRAINT [FK_TestResults_Appointments_AppointmentId] FOREIGN KEY ([AppointmentId]) REFERENCES [Appointments] ([Id]) ON DELETE CASCADE;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250620141302_ModifyFieldTestResults', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [TestResults] DROP CONSTRAINT [FK_TestResults_Appointments_AppointmentId];
+GO
+
+ALTER TABLE [TestResults] ADD CONSTRAINT [FK_TestResults_Appointments_AppointmentId] FOREIGN KEY ([AppointmentId]) REFERENCES [Appointments] ([Id]) ON DELETE NO ACTION;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250620141845_ModifyFieldAppointments', N'8.0.16');
 GO
 
 COMMIT;

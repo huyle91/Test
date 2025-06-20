@@ -9,6 +9,7 @@ using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.DTOs.Appointments;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
+using InfertilityTreatment.Entity.DTOs.Results;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -85,6 +86,12 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<DoctorSchedule, DoctorScheduleDto>();
             CreateMap<CreateDoctorScheduleDto, DoctorSchedule>();
             CreateMap<UpdateDoctorScheduleDto, DoctorSchedule>();
+
+            //TestResult
+            CreateMap<TestResult, TestResultDto>();
+            CreateMap<TestResult, TestResultDetailDto>();
+            CreateMap<CreateTestResultDto, TestResult>();
+            CreateMap<UpdateTestResultDto, TestResult>();
         }
     }
 }

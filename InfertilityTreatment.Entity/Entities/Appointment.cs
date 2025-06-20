@@ -39,5 +39,7 @@ namespace InfertilityTreatment.Entity.Entities
 
         [ForeignKey(nameof(DoctorScheduleId))]
         public virtual DoctorSchedule DoctorSchedule { get; set; } = null!;
+
+        public virtual ICollection<TestResult> TestResults { get; set; } = new List<TestResult>();
     }
 }

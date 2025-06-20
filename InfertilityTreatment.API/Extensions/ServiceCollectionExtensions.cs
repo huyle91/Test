@@ -11,7 +11,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using InfertilityTreatment.Repository;
-using InfertilityTreatment.Service.Services;
 
 namespace InfertilityTreatment.API.Extensions
 {

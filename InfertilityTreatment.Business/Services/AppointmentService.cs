@@ -20,53 +20,69 @@ namespace InfertilityTreatment.Business.Services
 {
     public class AppointmentService : IAppointmentService
     {
-        private readonly IAppointmentRepository _repository;
+        private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
 
-        public AppointmentService(IAppointmentRepository repository, IMapper mapper)
+        public AppointmentService(IUnitOfWork unitOfWork, IMapper mapper)
         {
-            _repository = repository;
+            _unitOfWork = unitOfWork;
             _mapper = mapper;
         }
 
         public async Task<AppointmentResponseDto> CreateAppointmentAsync(CreateAppointmentDto dto)
         {
-            // Check for conflict: same doctor, same date, same slot
-            var conflict = await _repository.GetByDoctorAndScheduleAsync(dto.DoctorId, dto.ScheduledDateTime, dto.DoctorScheduleId);
-            if (conflict != null)
-            {
-                throw new InvalidOperationException("Doctor already has an appointment at this time slot.");
-            }
 
-            var appointment = new Appointment
-            {
-                CycleId = dto.CycleId,
-                DoctorId = dto.DoctorId,
-                DoctorScheduleId = dto.DoctorScheduleId,
-                AppointmentType = dto.AppointmentType,
-                ScheduledDateTime = dto.ScheduledDateTime,
-                Notes = dto.Notes,
-                Status = AppointmentStatus.Scheduled
-            };
+                // Check existence of related entities
+                var cycle = await _unitOfWork.TreatmentCycles.GetCycleByIdAsync(dto.CycleId);
+                if (cycle == null)
+                    throw new ArgumentException("Cycle not found");
+                var doctor = await _unitOfWork.Doctors.GetDoctorByIdAsync(dto.DoctorId);
+                if (doctor == null)
+                    throw new ArgumentException("Doctor not found");
+                var doctorSchedule = await _unitOfWork.DoctorSchedules.GetByIdAsync(dto.DoctorScheduleId);
+                if (doctorSchedule == null)
+                    throw new ArgumentException("DoctorSchedule not found");
 
-            var created = await _repository.CreateAsync(appointment);
+                // Check for conflict: same doctor, same date, same slot
+                var conflict = await _unitOfWork.Appointments.GetByDoctorAndScheduleAsync(dto.DoctorId, dto.ScheduledDateTime, dto.DoctorScheduleId);
+                if (conflict != null)
+                {
+                    throw new InvalidOperationException("Doctor already has an appointment at this time slot.");
+                }
 
-            return new AppointmentResponseDto
-            {
-                Id = created.Id,
-                DoctorId = created.DoctorId,
-                DoctorScheduleId = created.DoctorScheduleId,
-                AppointmentType = created.AppointmentType,
-                ScheduledDateTime = created.ScheduledDateTime,
-                Status = created.Status,
-                Notes = created.Notes,
-                Results = created.Results
-            };
+                var appointment = new Appointment
+                {
+                    CycleId = dto.CycleId,
+                    DoctorId = dto.DoctorId,
+                    DoctorScheduleId = dto.DoctorScheduleId,
+                    AppointmentType = dto.AppointmentType,
+                    ScheduledDateTime = dto.ScheduledDateTime,
+                    Notes = dto.Notes,
+                    Status = AppointmentStatus.Scheduled
+                };
+
+                var created = await _unitOfWork.Appointments.CreateAsync(appointment);
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                return new AppointmentResponseDto
+                {
+                    Id = created.Id,
+                    DoctorId = created.DoctorId,
+                    DoctorScheduleId = created.DoctorScheduleId,
+                    AppointmentType = created.AppointmentType,
+                    ScheduledDateTime = created.ScheduledDateTime,
+                    Status = created.Status,
+                    Notes = created.Notes,
+                    Results = created.Results
+                };
+            
+            
         }
 
         public async Task<PaginatedResultDto<AppointmentResponseDto>> GetAppointmentsByCustomerAsync(int customerId, PaginationQueryDTO pagination)
         {
-            var list = await _repository.GetByCustomerAsync(customerId, pagination);
+            var list = await _unitOfWork.Appointments.GetByCustomerAsync(customerId, pagination);
             var dtoList = list.Items.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
@@ -89,7 +105,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<PaginatedResultDto<AppointmentResponseDto>> GetAppointmentsByDoctorAsync(int doctorId, DateTime date, PaginationQueryDTO pagination)
         {
-            var list = await _repository.GetByDoctorAndDateAsync(doctorId, date, pagination);
+            var list = await _unitOfWork.Appointments.GetByDoctorAndDateAsync(doctorId, date, pagination);
             var dtoList = list.Items.Select(a => new AppointmentResponseDto
             {
                 Id = a.Id,
@@ -112,11 +128,23 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto> RescheduleAppointmentAsync(int id, int doctorScheduleId, DateTime scheduledDateTime)
         {
-            var appointment = await _repository.GetByIdAsync(id);
-            if (appointment == null) return null;
+            if (id <= 0)
+                throw new ArgumentException("AppointmentId is required and must be greater than 0");
+            if (doctorScheduleId <= 0)
+                throw new ArgumentException("DoctorScheduleId is required and must be greater than 0");
+            if (scheduledDateTime < DateTime.UtcNow)
+                throw new ArgumentException("ScheduledDateTime must be in the future");
+
+            var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
+            if (appointment == null)
+                throw new ArgumentException("Appointment not found");
+
+            var doctorSchedule = await _unitOfWork.DoctorSchedules.GetByIdAsync(doctorScheduleId);
+            if (doctorSchedule == null)
+                throw new ArgumentException("DoctorSchedule not found");
 
             // Check for conflict: same doctor, same date, same slot (excluding current appointment)
-            var conflict = await _repository.GetByDoctorAndScheduleAsync(appointment.DoctorId, scheduledDateTime, doctorScheduleId);
+            var conflict = await _unitOfWork.Appointments.GetByDoctorAndScheduleAsync(appointment.DoctorId, scheduledDateTime, doctorScheduleId);
             if (conflict != null && conflict.Id != id)
             {
                 throw new InvalidOperationException("Doctor already has an appointment at this time slot.");
@@ -125,7 +153,8 @@ namespace InfertilityTreatment.Business.Services
             appointment.DoctorScheduleId = doctorScheduleId;
             appointment.ScheduledDateTime = scheduledDateTime;
             appointment.UpdatedAt = DateTime.UtcNow;
-            await _repository.UpdateAsync(appointment);
+            await _unitOfWork.Appointments.UpdateAsync(appointment);
+            await _unitOfWork.SaveChangesAsync();
 
             return new AppointmentResponseDto
             {
@@ -142,28 +171,34 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto> CancelAppointmentAsync(int id)
         {
-            var appointment = await _repository.GetByIdAsync(id);
-            if (appointment == null) throw new Exception("Appointment not found");
+            if (id <= 0)
+                throw new ArgumentException("AppointmentId is required and must be greater than 0");
+            
+                var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
+                if (appointment == null) throw new Exception("Appointment not found");
 
-            appointment.Status = AppointmentStatus.Cancelled;
-            await _repository.UpdateAsync(appointment);
+                appointment.Status = AppointmentStatus.Cancelled;
+                await _unitOfWork.Appointments.UpdateAsync(appointment);
+                await _unitOfWork.SaveChangesAsync();
 
-            return new AppointmentResponseDto
-            {
-                Id = appointment.Id,
-                DoctorId = appointment.DoctorId,
-                DoctorScheduleId = appointment.DoctorScheduleId,
-                AppointmentType = appointment.AppointmentType,
-                ScheduledDateTime = appointment.ScheduledDateTime,
-                Status = appointment.Status,
-                Notes = appointment.Notes,
-                Results = appointment.Results
-            };
+                return new AppointmentResponseDto
+                {
+                    Id = appointment.Id,
+                    DoctorId = appointment.DoctorId,
+                    DoctorScheduleId = appointment.DoctorScheduleId,
+                    AppointmentType = appointment.AppointmentType,
+                    ScheduledDateTime = appointment.ScheduledDateTime,
+                    Status = appointment.Status,
+                    Notes = appointment.Notes,
+                    Results = appointment.Results
+                };
+            
+            
         }
 
         public async Task<PaginatedResultDto<DoctorScheduleDto>> GetDoctorAvailabilityAsync(int doctorId, DateTime date, PaginationQueryDTO pagination)
         {
-            var entityResult = await _repository.GetDoctorAvailabilityAsync(doctorId, date, pagination);
+            var entityResult = await _unitOfWork.Appointments.GetDoctorAvailabilityAsync(doctorId, date, pagination);
             return new PaginatedResultDto<DoctorScheduleDto>(
                 _mapper.Map<List<DoctorScheduleDto>>(entityResult.Items),
                 entityResult.TotalCount,
@@ -174,7 +209,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<AppointmentResponseDto?> GetByIdAsync(int id)
         {
-            var appointment = await _repository.GetByIdAsync(id);
+            var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
             if (appointment == null) return null;
             return new AppointmentResponseDto
             {

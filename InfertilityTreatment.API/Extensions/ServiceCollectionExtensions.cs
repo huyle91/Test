@@ -39,7 +39,7 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<ITreatmentPackageService, TreatmentPackageService>();
 
             services.AddScoped<IAppointmentRepository, AppointmentRepository>();
-            services.AddScoped<IAppointmentService, AppointmentService>();
+            services.AddScoped<IAppointmentService, AppointmentService>();  
 
             services.AddScoped<IDoctorScheduleRepository, DoctorScheduleRepository>();
             services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();

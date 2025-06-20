@@ -22,6 +22,59 @@ namespace InfertilityTreatment.Data.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<byte>("AppointmentType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CycleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("DoctorScheduleId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Results")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("ScheduledDateTime")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte>("Status")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .IsRequired()
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId");
+
+                    b.HasIndex("DoctorId");
+
+                    b.HasIndex("DoctorScheduleId");
+
+                    b.ToTable("Appointments", (string)null);
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
                     b.Property<int>("Id")
@@ -136,6 +189,39 @@ namespace InfertilityTreatment.Data.Migrations
                     b.ToTable("Doctors");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.DoctorSchedule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("DoctorId")
+                        .HasColumnType("int");
+
+                    b.Property<TimeSpan>("EndTime")
+                        .HasColumnType("time");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<TimeSpan>("StartTime")
+                        .HasColumnType("time");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DoctorId");
+
+                    b.ToTable("DoctorSchedules");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -237,6 +323,57 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TestResult", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CycleId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("DoctorNotes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ReferenceRange")
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Results")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime>("TestDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<byte>("TestType")
+                        .HasColumnType("tinyint");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("CycleId");
+
+                    b.ToTable("TestResults", (string)null);
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
@@ -350,6 +487,61 @@ namespace InfertilityTreatment.Data.Migrations
                     b.ToTable("TreatmentPackages", (string)null);
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPhase", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Cost")
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CycleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Instructions")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PhaseName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("PhaseOrder")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CycleId", "PhaseOrder")
+                        .IsUnique();
+
+                    b.ToTable("TreatmentPhases");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentService", b =>
                 {
                     b.Property<int>("Id")
@@ -443,6 +635,33 @@ namespace InfertilityTreatment.Data.Migrations
                     b.ToTable("Users");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
+                        .WithMany("Appointments")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Doctor", "Doctor")
+                        .WithMany("Appointments")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.DoctorSchedule", "DoctorSchedule")
+                        .WithMany()
+                        .HasForeignKey("DoctorScheduleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("DoctorSchedule");
+
+                    b.Navigation("TreatmentCycle");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.User", "User")
@@ -465,6 +684,17 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.DoctorSchedule", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Doctor", "Doctor")
+                        .WithMany()
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Doctor");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.User", "User")
@@ -485,6 +715,25 @@ namespace InfertilityTreatment.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TestResult", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", "Appointment")
+                        .WithMany("TestResults")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
+                        .WithMany("TestResults")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("TreatmentCycle");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
@@ -525,6 +774,22 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Navigation("TreatmentService");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPhase", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "Cycle")
+                        .WithMany("TreatmentPhases")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Cycle");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
+                {
+                    b.Navigation("TestResults");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
                     b.Navigation("TreatmentCycles");
@@ -532,7 +797,18 @@ namespace InfertilityTreatment.Data.Migrations
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Doctor", b =>
                 {
+                    b.Navigation("Appointments");
+
                     b.Navigation("TreatmentCycles");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
+                {
+                    b.Navigation("Appointments");
+
+                    b.Navigation("TestResults");
+
+                    b.Navigation("TreatmentPhases");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPackage", b =>

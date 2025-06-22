@@ -17,6 +17,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         public async Task<PaginatedResultDto<TreatmentCycle>> GetCyclesByCustomerAsync(int customerId, TreatmentCycleFilterDto filter)
         {
             var query = _context.TreatmentCycles
+                .Include(tc => tc.TreatmentPhases)
         .Where(tc => tc.CustomerId == customerId && tc.IsActive)
         .OrderByDescending(tc => tc.CreatedAt)
         .AsQueryable();
@@ -35,6 +36,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         public async Task<PaginatedResultDto<TreatmentCycle>> GetCyclesByDoctorAsync(int doctorId, TreatmentCycleFilterDto filter)
         {
             var query = _context.TreatmentCycles
+                .Include(tc => tc.TreatmentPhases)
           .Include(tc => tc.Customer).ThenInclude(c => c.User)
           .Include(tc => tc.Doctor).ThenInclude(d => d.User)
           .Include(tc => tc.TreatmentPackage)

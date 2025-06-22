@@ -1,4 +1,5 @@
-﻿using InfertilityTreatment.Entity.Enums;
+﻿using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
+using InfertilityTreatment.Entity.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -48,5 +49,6 @@ namespace InfertilityTreatment.Entity.DTOs.TreatmentCycles
         public string? Notes { get; set; }
 
         public bool? IsSuccessful { get; set; } // Null until completed
+        public List<PhaseResponseDto> Phase { get; set; } = new List<PhaseResponseDto>();
     }
 }

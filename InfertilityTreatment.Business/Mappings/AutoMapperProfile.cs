@@ -63,6 +63,8 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<TreatmentCycle, CycleResponseDto>().ReverseMap();
             CreateMap<TreatmentCycle, CycleDetailDto>().ReverseMap();
             CreateMap<TreatmentCycle, UpdateCycleDto>().ReverseMap();
+            CreateMap<TreatmentCycle, CycleResponseDto>()
+            .ForMember(dest => dest.Phase, opt => opt.MapFrom(src => src.TreatmentPhases));
 
             //TreatmentPakage
             CreateMap<TreatmentPackage, TreatmentPackageDto>();

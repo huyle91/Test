@@ -37,6 +37,8 @@ namespace InfertilityTreatment.Data.Configurations
             builder.HasIndex(x => x.DoctorId);
             builder.HasIndex(x => x.Status);
             builder.HasIndex(x => x.StartDate);
+            builder.HasIndex(tc => tc.Status);
+            builder.HasIndex(tc => tc.StartDate);
 
             // Relationships
             //builder.HasMany(x => x.TreatmentPhases)

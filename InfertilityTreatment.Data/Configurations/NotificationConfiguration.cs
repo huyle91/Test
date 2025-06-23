@@ -50,6 +50,9 @@ namespace InfertilityTreatment.Data.Configurations
                 .WithMany(u => u.Notifications)
                 .HasForeignKey(n => n.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+
+            builder.HasIndex(n => n.UserId);
+            builder.HasIndex(n => n.IsRead);
         }
     }
 }

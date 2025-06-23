@@ -23,6 +23,9 @@ namespace InfertilityTreatment.Data.Configurations
                    .HasColumnType("decimal(12,2)");
 
             builder.HasIndex(x => new { x.CycleId, x.PhaseOrder });
+
+            builder.HasIndex(tp => tp.CycleId);
+            builder.HasIndex(tp => tp.PhaseOrder);
         }
     
     }

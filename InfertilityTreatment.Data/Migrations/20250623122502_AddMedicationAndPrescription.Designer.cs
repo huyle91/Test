@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfertilityTreatment.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20250622185548_AddMedicationAndPrescription")]
+    [Migration("20250623122502_AddMedicationAndPrescription")]
     partial class AddMedicationAndPrescription
     {
         /// <inheritdoc />
@@ -74,6 +74,8 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("DoctorId");
 
                     b.HasIndex("DoctorScheduleId");
+
+                    b.HasIndex("ScheduledDateTime");
 
                     b.ToTable("Appointments", (string)null);
                 });
@@ -235,8 +237,7 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<string>("ActiveIngredient")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
@@ -256,8 +257,7 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("SideEffects")
                         .IsRequired()
@@ -273,6 +273,10 @@ namespace InfertilityTreatment.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ActiveIngredient");
+
+                    b.HasIndex("Name");
 
                     b.ToTable("Medications");
                 });
@@ -340,6 +344,8 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsRead");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("notifications", (string)null);
@@ -397,6 +403,10 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("MedicationId");
 
                     b.HasIndex("PhaseId");
+
+                    b.HasIndex("StartDate");
+
+                    b.HasIndex("StartDate", "EndDate");
 
                     b.ToTable("Prescriptions");
                 });
@@ -483,6 +493,10 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("AppointmentId");
 
                     b.HasIndex("CycleId");
+
+                    b.HasIndex("TestDate");
+
+                    b.HasIndex("TestType");
 
                     b.ToTable("TestResults", (string)null);
                 });
@@ -647,8 +661,11 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CycleId", "PhaseOrder")
-                        .IsUnique();
+                    b.HasIndex("CycleId");
+
+                    b.HasIndex("PhaseOrder");
+
+                    b.HasIndex("CycleId", "PhaseOrder");
 
                     b.ToTable("TreatmentPhases");
                 });

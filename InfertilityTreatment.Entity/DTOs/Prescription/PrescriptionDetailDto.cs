@@ -8,12 +8,14 @@ namespace InfertilityTreatment.Entity.DTOs.Prescription
 {
     public class PrescriptionDetailDto
     {
-        public Guid Id { get; set; }
-        public Guid MedicationId { get; set; }
+        public int Id { get; set; } 
+        public int MedicationId { get; set; } 
         public string MedicationName { get; set; }
-        public Guid AppointmentId { get; set; }
-        public string AppointmentNote { get; set; }
-        public int Quantity { get; set; }
+        public int PhaseId { get; set; } 
+        public string Dosage { get; set; }
+        public string Frequency { get; set; }
         public string Instructions { get; set; }
+        public DateTime StartDate { get; set; }
+        public DateTime EndDate { get; set; }
     }
 }

@@ -33,8 +33,8 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(cycleResponse, "Treatment cycle created successfully."));
         }
 
-        [HttpGet]
-        [Authorize(Roles = nameof(UserRole.Doctor) + "," + nameof(UserRole.Manager) + "," + nameof(UserRole.Customer))]
+            [HttpGet]
+            [Authorize(Roles = nameof(UserRole.Doctor) + "," + nameof(UserRole.Manager) + "," + nameof(UserRole.Customer))]
         public async Task<IActionResult> GetTreatmentCycles([FromQuery] TreatmentCycleFilterDto filter)
         {
             if (filter.PageSize > 100)
@@ -42,11 +42,15 @@ namespace InfertilityTreatment.API.Controllers
 
             if (filter.PageNumber < 1)
                 filter.PageNumber = 1;
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var roleStr = User.FindFirstValue(ClaimTypes.Role);
+            if (!Enum.TryParse<UserRole>(roleStr, out var userRole))
+                return Forbid();
 
-            if (filter.CustomerId.HasValue)
+            if (userRole == UserRole.Customer)
             {
-                var result = await _cycleService.GetCyclesByCustomerAsync(filter.CustomerId.Value, filter);
-                return Ok(ApiResponseDto<PaginatedResultDto<CycleResponseDto>>.CreateSuccess(result, "Retrieved cycles by customer successfully."));
+                var result = await _cycleService.GetCyclesByCustomerAsync(userId, filter);
+                return Ok(ApiResponseDto<PaginatedResultDto<CycleResponseDto>>.CreateSuccess(result, "Retrieved cycles by customer successfully.."));
             }
 
             if (filter.DoctorId.HasValue)

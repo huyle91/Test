@@ -18,7 +18,10 @@ namespace InfertilityTreatment.Data.Configurations
             builder.Property(p => p.Dosage).HasMaxLength(100);
             builder.Property(p => p.Frequency).HasMaxLength(100);
             builder.Property(p => p.Instructions).HasMaxLength(500);
-
+            builder.HasIndex(p => p.PhaseId);
+            builder.HasIndex(p => p.MedicationId);
+            builder.HasIndex(p => new { p.StartDate, p.EndDate });
+            builder.HasIndex(p => p.StartDate);
             builder.HasOne(p => p.Medication)
                    .WithMany(m => m.Prescriptions)
                    .HasForeignKey(p => p.MedicationId);

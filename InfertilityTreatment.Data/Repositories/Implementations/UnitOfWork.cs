@@ -34,9 +34,8 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         public IAppointmentRepository Appointments => _appointments ??= new AppointmentRepository(_context);
         public IDoctorRepository Doctors => _doctors ??= new DoctorRepository(_context);
         public IDoctorScheduleRepository DoctorSchedules => _doctorSchedules ??= new DoctorScheduleRepository(_context);
-
         public IMedicationRepository Medications => _medications ??= new MedicationRepository(_context);
-        public IPrescriptionRepository Prescriptions => _prescriptions??= new PrescriptionRepository(_context);
+        public IPrescriptionRepository Prescriptions => _prescriptions ??= new PrescriptionRepository(_context);
 
         public async Task<int> SaveChangesAsync()
         {

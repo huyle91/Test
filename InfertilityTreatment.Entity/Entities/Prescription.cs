@@ -16,15 +16,17 @@ namespace InfertilityTreatment.Entity.Entities
         [Required]
         public int MedicationId { get; set; }
         [Required]
+        [StringLength(100, MinimumLength = 1)]
         public string Dosage { get; set; }
         [Required]
+        [StringLength(100, MinimumLength = 1)]
         public string Frequency { get; set; }
         [Required]
+        [Range(1, 365, ErrorMessage = "Duration must be between 1 and 365 days")]
         public int Duration { get; set; }
         [Required]
+        [StringLength(500, MinimumLength = 1)]
         public string Instructions { get; set; }
-        [Required]
-
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
 
@@ -33,5 +35,15 @@ namespace InfertilityTreatment.Entity.Entities
         public TreatmentPhase TreatmentPhase { get; set; }
         [ForeignKey(nameof(MedicationId))]
         public Medication Medication { get; set; }
+
+        public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+        {
+            if (EndDate <= StartDate)
+            {
+                yield return new ValidationResult(
+                    "End date must be after start date",
+                    new[] { nameof(EndDate) });
+            }
+        }
     }
 }

@@ -51,6 +51,11 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<ITestResultRepository, TestResultRepository>();
             services.AddScoped<ITestResultService, TestResultService>();
 
+            services.AddScoped<IMedicationRepository, MedicationRepository>();
+            services.AddScoped<IMedicationService, MedicationService>();
+
+            services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+            services.AddScoped<IPrescriptionService, PrescriptionService>();
 
             // Business Services
             services.AddScoped<IAuthService, AuthService>();

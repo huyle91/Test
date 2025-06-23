@@ -54,6 +54,9 @@ namespace InfertilityTreatment.Data.Configurations
                    .WithMany(d => d.Appointments) // Ensure Doctor has ICollection<Appointment> Appointments
                    .HasForeignKey(a => a.DoctorId)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(a => a.DoctorId);
+            builder.HasIndex(a => a.ScheduledDateTime);
         }
     }
 }

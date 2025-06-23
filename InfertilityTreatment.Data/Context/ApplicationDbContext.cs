@@ -31,8 +31,8 @@ namespace InfertilityTreatment.Data.Context
         public DbSet<TestResult> TestResults { get; set; }
 
         // Medication DbSets
-        //public DbSet<Medication> Medications { get; set; }
-        //public DbSet<Prescription> Prescriptions { get; set; }
+        public DbSet<Medication> Medications { get; set; }
+        public DbSet<Prescription> Prescriptions { get; set; }
 
         // Content & Feedback DbSets
         //public DbSet<BlogPost> BlogPosts { get; set; }

@@ -12,6 +12,7 @@
         IDoctorScheduleRepository DoctorSchedules { get; }
         IMedicationRepository Medications { get; }
         IPrescriptionRepository Prescriptions { get; }
+        IReviewRepository Reviews { get; }
 
 
         // Transaction Methods

@@ -5,6 +5,7 @@ using InfertilityTreatment.Entity.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -44,7 +45,8 @@ namespace InfertilityTreatment.API.Controllers
         {
             try
             {
-                var result = await _reviewService.GetReviewsAsync(filter);
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;
+                var result = await _reviewService.GetReviewsAsync(filter, userRole);
                 return Ok(ApiResponseDto<PaginatedResultDto<ReviewDto>>.CreateSuccess(result, "Fetched filtered reviews successfully."));
             }
             catch (Exception ex)
@@ -55,7 +57,6 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet("~/api/doctors/{doctorId}/reviews")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetReviewsByDoctor(int doctorId)
         {
             try
@@ -71,7 +72,6 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet("~/api/doctors/{doctorId}/statistics")]
-        [AllowAnonymous]
         public async Task<IActionResult> GetDoctorReviewStatistics(int doctorId)
         {
             try

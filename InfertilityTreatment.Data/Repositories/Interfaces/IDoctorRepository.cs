@@ -12,6 +12,7 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<Doctor> GetDoctorByIdAsync(int doctorId);
         Task AddDoctorAsync(Doctor doctor);
         Task UpdateDoctorAsync(Doctor doctor);
+        Task<bool> UpdateSuccessRateAsync(int doctorId,decimal? successRate);
         Task DeleteDoctorAsync(int doctorId);
         Task<IEnumerable<Doctor>> SearchDoctorsAsync(DoctorSearchDto searchDto);
     }

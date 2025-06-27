@@ -3,6 +3,7 @@ using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Review;
 using InfertilityTreatment.Entity.Entities;
+using InfertilityTreatment.Entity.Enums;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -26,19 +27,23 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             return review;
         }
 
-        public async Task<bool> ApproveReviewAsync(int reviewId)
+        public async Task<Review> ApproveReviewAsync(int reviewId)
         {
             var review = await _context.Reviews.FindAsync(reviewId);
             if (review == null || review.IsApproved)
-                return false;
-
+                return null;
             review.IsApproved = true;
             _context.Reviews.Update(review);
-
-            return await _context.SaveChangesAsync() > 0;
+            await _context.SaveChangesAsync();
+            return review;
         }
 
-        public async Task<PaginatedResultDto<Review>> GetReviewsAsync(ReviewFilterDto filter)
+        public async Task<bool> HasReviewedCycleAsync(int cycleId)
+        {
+            return await _context.Reviews.AnyAsync(r => r.CycleId == cycleId);
+        }
+
+        public async Task<PaginatedResultDto<Review>> GetReviewsAsync(ReviewFilterDto filter, UserRole userRole)
         {
             var query = _context.Reviews
                 .Include(r => r.Customer)
@@ -62,7 +67,10 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             if (filter.ToDate.HasValue)
                 query = query.Where(r => r.CreatedAt <= filter.ToDate.Value);
-
+            if (userRole != UserRole.Admin)
+            {
+                query = query.Where(r => r.IsApproved == true);
+            }
             var totalCount = await query.CountAsync();
 
             var items = await query
@@ -80,6 +88,13 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .Where(r => r.DoctorId == doctorId && r.IsApproved)
                 .OrderByDescending(r => r.CreatedAt)
                 .ToListAsync();
+        }
+        public async Task<bool> IsTrustedCustomerAsync(int customerId)
+        {
+            var approvedCount = await _context.Reviews
+                .CountAsync(r => r.CustomerId == customerId && r.IsApproved);
+
+            return approvedCount >= 3;
         }
 
         public async Task<ReviewStatisticsDto> GetReviewStatisticsAsync(int doctorId)
@@ -106,6 +121,18 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 RatingDistribution = ratingDist,
                 LastReviewDate = lastReviewDate
             };
+        }
+
+        public async Task<decimal> CalculateDoctorSuccessRate(int doctorId)
+        {
+            var reviews = await _context.Reviews
+                .Where(r => r.DoctorId == doctorId && r.IsApproved)
+                .ToListAsync();
+
+            if (reviews == null || !reviews.Any())
+                return 0m;
+
+            return Math.Round((decimal)reviews.Average(r => r.Rating), 2);
         }
 
     }

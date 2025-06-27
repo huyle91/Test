@@ -36,9 +36,9 @@ namespace InfertilityTreatment.Data.Migrations
                     Id = table.Column<int>(type: "int", nullable: false)
                         .Annotation("SqlServer:Identity", "1, 1"),
                     CustomerId = table.Column<int>(type: "int", nullable: false),
-                    DoctorId = table.Column<int>(type: "int", nullable: false),
+                    DoctorId = table.Column<int>(type: "int", nullable: true),
                     CycleId = table.Column<int>(type: "int", nullable: true),
-                    Rating = table.Column<byte>(type: "tinyint", nullable: false),
+                    Rating = table.Column<int>(type: "tinyint", nullable: false),
                     ReviewType = table.Column<string>(type: "nvarchar(50)", maxLength: 50, nullable: false),
                     Comment = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     IsApproved = table.Column<bool>(type: "bit", nullable: false),

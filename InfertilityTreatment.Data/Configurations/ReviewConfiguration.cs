@@ -19,7 +19,7 @@ namespace InfertilityTreatment.Data.Configurations
 
             builder.Property(r => r.Rating)
                    .IsRequired()
-                   .HasConversion<byte>();
+                   .HasConversion<int>();
 
             builder.Property(r => r.Comment)
                    .HasColumnType("nvarchar(max)");

@@ -76,5 +76,22 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                                         d.IsAvailable == searchDto.IsAvailable.Value);
             return await FindWithIncludeAsync(predicate, d => d.User);
         }
+
+        public async Task<bool> UpdateSuccessRateAsync(int doctorId, decimal? successRate)
+        {
+            var doctor = await _context.Doctors.FindAsync(doctorId);
+            if (doctor == null)
+            {
+                throw new Exception($"Doctor with ID {doctorId} not found.");
+            }
+
+            doctor.SuccessRate = successRate ?? 0;
+
+            _context.Doctors.Update(doctor);
+            var result = await _context.SaveChangesAsync();
+
+            return result > 0; 
+        }
+
     }
 }

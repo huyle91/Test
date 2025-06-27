@@ -20,6 +20,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         private IDoctorScheduleRepository? _doctorSchedules;
         private IMedicationRepository? _medications;
         private IPrescriptionRepository? _prescriptions;
+        private IReviewRepository? _reviews;
 
         public UnitOfWork(ApplicationDbContext context)
         {
@@ -36,6 +37,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         public IDoctorScheduleRepository DoctorSchedules => _doctorSchedules ??= new DoctorScheduleRepository(_context);
         public IMedicationRepository Medications => _medications ??= new MedicationRepository(_context);
         public IPrescriptionRepository Prescriptions => _prescriptions ??= new PrescriptionRepository(_context);
+        public IReviewRepository Reviews => _reviews ??= new ReviewRepository(_context);
 
         public async Task<int> SaveChangesAsync()
         {

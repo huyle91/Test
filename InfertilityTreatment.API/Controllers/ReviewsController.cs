@@ -57,6 +57,7 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet("~/api/doctors/{doctorId}/reviews")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetReviewsByDoctor(int doctorId)
         {
             try
@@ -72,6 +73,7 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet("~/api/doctors/{doctorId}/statistics")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetDoctorReviewStatistics(int doctorId)
         {
             try

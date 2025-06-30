@@ -45,6 +45,7 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
 
             services.AddScoped<ITreatmentPhaseRepository, TreatmentPhaseRepository>();
+            services.AddScoped<ITreatmentPhaseService, TreatmentPhaseService>();
             services.AddScoped<ICycleService, CycleService>();
 
             services.AddScoped<ITestResultRepository, TestResultRepository>();
@@ -58,6 +59,11 @@ namespace InfertilityTreatment.API.Extensions
 
             services.AddScoped<IReviewService, ReviewService>();
             services.AddScoped<IReviewRepository, ReviewRepository>();
+
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<INotificationService, NotificationService>();
+
+            services.AddScoped<IEmailService, EmailService>();
 
             // Business Services
             services.AddScoped<IAuthService, AuthService>();

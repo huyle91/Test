@@ -65,6 +65,11 @@ namespace InfertilityTreatment.API.Extensions
 
             services.AddScoped<IEmailService, EmailService>();
 
+            // Week 6 Foundation Services
+            services.AddScoped<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IBookingService, BookingService>();
+
             // Business Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IDoctorService, DoctorService>();

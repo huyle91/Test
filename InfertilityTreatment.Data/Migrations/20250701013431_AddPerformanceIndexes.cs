@@ -10,6 +10,7 @@ namespace InfertilityTreatment.Data.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+
             // Create performance indexes for Week 6 analytics and payment features
             migrationBuilder.Sql(@"
                 -- User performance indexes

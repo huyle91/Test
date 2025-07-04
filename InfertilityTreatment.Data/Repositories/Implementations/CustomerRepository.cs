@@ -29,6 +29,12 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .FirstOrDefaultAsync(c => c.UserId == userId && c.IsActive);
         }
 
+        public async Task<IEnumerable<Customer>> GetAllWithUserAsync()
+        {
+            return await _context.Customers
+                .Include(c => c.User)
+                .ToListAsync();
+        }
         public async Task<Customer> GetWithMedicalHistoryAsync(int customerId)
         {
             var customer = await GetByIdWithIncludeAsync(customerId, c => c.User, c => c.TreatmentCycles);

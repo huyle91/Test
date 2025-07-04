@@ -8,10 +8,25 @@ namespace InfertilityTreatment.Business.Interfaces
 {
     public interface IAnalyticsService
     {
-        // Prepare for BE019: Analytics & Dashboard Foundation
+        // Dashboard Analytics
         Task<DashboardStatsDto> GetDashboardStatsAsync(UserRole role, int userId, DateRangeDto dateRange);
-        Task<List<TreatmentSuccessRateDto>> GetTreatmentSuccessRatesAsync();
+        
+        // Treatment Success Rates
+        Task<PaginatedResultDto<TreatmentSuccessRateDto>> GetTreatmentSuccessRatesAsync(SuccessRateFilterDto filter, PaginationQueryDTO pagination);
+        
+        // Revenue Analytics
         Task<RevenueReportDto> GetRevenueReportAsync(RevenueFilterDto filter);
+        
+        // Doctor Performance
         Task<DoctorPerformanceDto> GetDoctorPerformanceAsync(int doctorId);
+        
+        // Patient Demographics
+        Task<PatientDemographicsDto> GetPatientDemographicsAsync(DateRangeDto dateRange);
+        
+        // Export Functionality
+        Task<byte[]> ExportReportToPdfAsync(ExportReportDto exportRequest);
+        Task<byte[]> ExportReportToExcelAsync(ExportReportDto exportRequest);
+
+        Task<bool> CheckIsDoctorIdWithUserId(int userId, int doctorId);
     }
 }

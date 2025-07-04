@@ -1,5 +1,6 @@
 using InfertilityTreatment.API.Extensions;
 using InfertilityTreatment.API.Middleware;
+using InfertilityTreatment.API.Services;
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Business.Services;
 using InfertilityTreatment.Data.Context;
@@ -28,6 +29,12 @@ builder.Services.AddBusinessServices();
 
 // Add JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Add Health Checks
+builder.Services.AddHealthChecks()
+    .AddCheck<DatabaseHealthCheck>("database")
+    .AddCheck<ExternalServiceHealthCheck>("external-services")
+    .AddCheck<SystemResourceHealthCheck>("system-resources");
 
 // Configure Swagger with JWT
 builder.Services.AddSwaggerGen(c =>
@@ -107,6 +114,17 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Initialize query optimization warmup
+using (var scope = app.Services.CreateScope())
+{
+    var queryOptimizationService = scope.ServiceProvider.GetRequiredService<IQueryOptimizationService>();
+    _ = Task.Run(async () =>
+    {
+        await Task.Delay(5000); // Wait 5 seconds after startup
+        await queryOptimizationService.WarmupCriticalQueries();
+    });
+}
 
 // Health check endpoint
 app.MapGet("/health", () => new

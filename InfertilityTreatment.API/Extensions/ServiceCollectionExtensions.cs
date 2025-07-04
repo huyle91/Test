@@ -70,6 +70,13 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IPaymentService, PaymentService>();
             services.AddScoped<IBookingService, BookingService>();
 
+            // System Integration & Optimization Services
+            services.AddScoped<ICacheService, CacheService>();
+            services.AddScoped<IAuditLogService, AuditLogService>();
+            services.AddScoped<IQueryOptimizationService, QueryOptimizationService>();
+            services.AddMemoryCache();
+            services.AddHttpClient();
+
             // Business Services
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IDoctorService, DoctorService>();

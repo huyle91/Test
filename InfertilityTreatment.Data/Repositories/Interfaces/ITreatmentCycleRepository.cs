@@ -17,5 +17,6 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<bool> UpdateStatusAsync(int cycleId, CycleStatus status);
         Task<bool> UpdateDoctorAsync(int cycleId, int doctorId);
         Task<decimal> CalculatePhaseCostAsync(int cycleId);
+        Task<TreatmentCycle?> GetByCustomerAndNumberAsync(int customerId, int cycleNumber);
     }
 }

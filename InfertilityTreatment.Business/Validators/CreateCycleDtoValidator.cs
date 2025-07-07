@@ -3,6 +3,7 @@ using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using System.Threading;
 using System.Threading.Tasks;
+using System;
 
 namespace InfertilityTreatment.Business.Validators
 {
@@ -11,7 +12,6 @@ namespace InfertilityTreatment.Business.Validators
         private readonly ICustomerRepository _customerRepository;
         private readonly IDoctorRepository _doctorRepository;
         private readonly ITreatmentPackageRepository _packageRepository;
-        private readonly ITreatmentCycleRepository _cycleRepository;
 
         public CreateCycleDtoValidator(
             ICustomerRepository customerRepository,
@@ -22,10 +22,6 @@ namespace InfertilityTreatment.Business.Validators
             _customerRepository = customerRepository;
             _doctorRepository = doctorRepository;
             _packageRepository = packageRepository;
-            _cycleRepository = cycleRepository;
-
-            RuleFor(x => x.CustomerId)
-                .MustAsync(CustomerExists).WithMessage("Customer does not exist");
 
             RuleFor(x => x.DoctorId)
                 .MustAsync(DoctorAvailable).WithMessage("Doctor is inactive or not found");
@@ -37,11 +33,31 @@ namespace InfertilityTreatment.Business.Validators
                 .GreaterThan(x => x.StartDate.Value)
                 .When(x => x.StartDate.HasValue)
                 .WithMessage("Expected end date must be after start date");
-        }
 
-        private async Task<bool> CustomerExists(int customerId, CancellationToken ct)
-        {
-            return await _customerRepository.ExistsAsync(customerId);
+            RuleFor(x => x.ActualEndDate)
+                .GreaterThan(x => x.StartDate.Value)
+                .When(x => x.StartDate.HasValue && x.ActualEndDate.HasValue)
+                .WithMessage("Actual end date must be after start date");
+
+            RuleFor(x => x.StartDate)
+                .Must(date => !date.HasValue || date.Value.Year >= 2000)
+                .WithMessage("Start date cannot be before year 2000");
+
+            RuleFor(x => x.ExpectedEndDate)
+                .Must(date => !date.HasValue || date.Value <= DateTime.UtcNow.AddYears(2))
+                .WithMessage("Expected end date cannot be more than 2 years in the future");
+
+            RuleFor(x => x.StartDate)
+                .Must(date => !date.HasValue || date.Value <= DateTime.UtcNow.AddYears(2))
+                .WithMessage("Start date cannot be more than 2 years in the future");
+
+            RuleFor(x => x.ExpectedEndDate)
+                .Must(date => !date.HasValue || date.Value.Year <= 2100)
+                .WithMessage("Expected end date cannot be after year 2100");
+
+            RuleFor(x => x.ActualEndDate)
+                .Must(date => !date.HasValue || date.Value.Year <= 2100)
+                .WithMessage("Actual end date cannot be after year 2100");
         }
 
         private async Task<bool> DoctorAvailable(int doctorId, CancellationToken ct)

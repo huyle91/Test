@@ -1,4 +1,5 @@
 ﻿using InfertilityTreatment.Entity.Common;
+using InfertilityTreatment.Entity.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -17,7 +18,7 @@ namespace InfertilityTreatment.Entity.Entities
         public string PhaseName { get; set; } = string.Empty;
         public int PhaseOrder { get; set; }
 
-        public string Status { get; set; } = string.Empty;
+        public PhaseStatus Status { get; set; } = PhaseStatus.Pending;
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }

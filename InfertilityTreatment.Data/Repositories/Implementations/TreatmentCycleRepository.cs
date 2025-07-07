@@ -135,5 +135,11 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             _context.TreatmentCycles.Update(treatmentCycle);
             return _context.SaveChangesAsync().ContinueWith(t => t.Result > 0);
         }
+
+        public async Task<TreatmentCycle?> GetByCustomerAndNumberAsync(int customerId, int cycleNumber)
+        {
+            return await _context.TreatmentCycles
+                .FirstOrDefaultAsync(tc => tc.CustomerId == customerId && tc.CycleNumber == cycleNumber && tc.IsActive);
+        }
     }
 }

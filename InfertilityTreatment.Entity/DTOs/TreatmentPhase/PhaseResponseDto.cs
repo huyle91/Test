@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using InfertilityTreatment.Entity.Enums;
 
 namespace InfertilityTreatment.Entity.DTOs.TreatmentPhase
 {
@@ -13,7 +14,7 @@ namespace InfertilityTreatment.Entity.DTOs.TreatmentPhase
         public string PhaseName { get; set; } = string.Empty;
         public int PhaseOrder { get; set; }
 
-        public string Status { get; set; } = string.Empty;
+        public PhaseStatus Status { get; set; } = PhaseStatus.Pending;
 
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }

@@ -123,8 +123,37 @@ namespace InfertilityTreatment.Business.Services
         }
         public async Task<CycleResponseDto> CreateCycleAsync(CreateCycleDto createCycleDto)
         {
+            await _unitOfWork.BeginTransactionAsync();
             try
             {
+                // Validate Customer
+                var customer = await _unitOfWork.Customers.GetByIdAsync(createCycleDto.CustomerId);
+                if (customer == null || !customer.IsActive)
+                {
+                    throw new ArgumentException("Customer does not exist or is inactive.");
+                }
+
+                // Validate Doctor
+                var doctor = await _unitOfWork.Doctors.GetDoctorByIdAsync(createCycleDto.DoctorId);
+                if (doctor == null || !doctor.IsActive || !doctor.IsAvailable)
+                {
+                    throw new ArgumentException("Doctor does not exist, is inactive, or is not available.");
+                }
+
+                // Validate Package
+                var package = await _unitOfWork.TreatmentPackages.GetByIdAsync(createCycleDto.PackageId);
+                if (package == null || !package.IsActive)
+                {
+                    throw new ArgumentException("Treatment package does not exist or is inactive.");
+                }
+
+                // Check duplicate CycleNumber for Customer
+                var existingCycle = await _treatmentCycleRepository.GetByCustomerAndNumberAsync(createCycleDto.CustomerId, createCycleDto.CycleNumber);
+                if (existingCycle != null)
+                {
+                    throw new InvalidOperationException($"CycleNumber {createCycleDto.CycleNumber} already exists for this customer.");
+                }
+
                 var cycle = await _treatmentCycleRepository.AddTreatmentCycleAsync(_mapper.Map<TreatmentCycle>(createCycleDto));
 
                 if (cycle == null)
@@ -132,11 +161,13 @@ namespace InfertilityTreatment.Business.Services
                     throw new Exception("Unable to create TreatmentCycle.");
                 }
 
+                await _unitOfWork.CommitTransactionAsync();
                 return _mapper.Map<CycleResponseDto>(cycle);
             }
             catch (Exception ex)
             {
-                throw new ApplicationException("An error occurred while creating the treatment cycle.", ex);
+                await _unitOfWork.RollbackTransactionAsync();
+                throw new ApplicationException($"{ex.Message}", ex);
             }
         }
         public async Task<CycleDetailDto> GetCycleByIdAsync(int cycleId)

@@ -22,6 +22,11 @@ namespace InfertilityTreatment.Data.Configurations
             builder.Property(x => x.Cost)
                    .HasColumnType("decimal(12,2)");
 
+            builder.Property(x => x.Status)
+                   .HasConversion<string>()
+                   .HasMaxLength(50)
+                   .IsRequired();
+
             builder.HasIndex(x => new { x.CycleId, x.PhaseOrder });
 
             builder.HasIndex(tp => tp.CycleId);

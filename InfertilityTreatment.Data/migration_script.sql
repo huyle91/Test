@@ -837,3 +837,124 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Payments_CustomerId' AND object_id = OBJECT_ID('Payments'))
+                    CREATE INDEX IX_Payments_CustomerId ON Payments(CustomerId)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Payments_Status' AND object_id = OBJECT_ID('Payments'))
+                    CREATE INDEX IX_Payments_Status ON Payments(Status)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_TreatmentCycles_Status_StartDate' AND object_id = OBJECT_ID('TreatmentCycles'))
+                    CREATE INDEX IX_TreatmentCycles_Status_StartDate ON TreatmentCycles(Status, StartDate)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Appointments_DoctorId_ScheduledDateTime' AND object_id = OBJECT_ID('Appointments'))
+                    CREATE INDEX IX_Appointments_DoctorId_ScheduledDateTime ON Appointments(DoctorId, ScheduledDateTime)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Invoices_CustomerId' AND object_id = OBJECT_ID('Invoices'))
+                    CREATE INDEX IX_Invoices_CustomerId ON Invoices(CustomerId)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Invoices_Status' AND object_id = OBJECT_ID('Invoices'))
+                    CREATE INDEX IX_Invoices_Status ON Invoices(Status)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Invoices_IssueDate' AND object_id = OBJECT_ID('Invoices'))
+                    CREATE INDEX IX_Invoices_IssueDate ON Invoices(IssueDate)
+            
+GO
+
+
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_InvoiceItems_InvoiceId' AND object_id = OBJECT_ID('InvoiceItems'))
+                    CREATE INDEX IX_InvoiceItems_InvoiceId ON InvoiceItems(InvoiceId)
+            
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250704060534_AddPaymentSystemIndexes', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [Payments] ADD [PaymentGatewayResponse] nvarchar(max) NULL;
+GO
+
+CREATE TABLE [PaymentLogs] (
+    [Id] int NOT NULL IDENTITY,
+    [PaymentId] int NOT NULL,
+    [Action] nvarchar(100) NOT NULL,
+    [Status] nvarchar(50) NOT NULL,
+    [RequestData] nvarchar(max) NULL,
+    [ResponseData] nvarchar(max) NULL,
+    [Notes] nvarchar(500) NULL,
+    [CreatedAt] datetime2 NOT NULL,
+    [UpdatedAt] datetime2 NULL,
+    [IsActive] bit NOT NULL,
+    CONSTRAINT [PK_PaymentLogs] PRIMARY KEY ([Id]),
+    CONSTRAINT [FK_PaymentLogs_Payments_PaymentId] FOREIGN KEY ([PaymentId]) REFERENCES [Payments] ([Id]) ON DELETE CASCADE
+);
+GO
+
+CREATE INDEX [IX_PaymentLogs_PaymentId] ON [PaymentLogs] ([PaymentId]);
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250707020906_AddPayments', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [Payments] DROP CONSTRAINT [FK_Payments_Appointments_AppointmentId];
+GO
+
+ALTER TABLE [Payments] DROP CONSTRAINT [FK_Payments_TreatmentCycles_TreatmentCycleId];
+GO
+
+ALTER TABLE [Payments] ADD [TreatmentPackageId] int NOT NULL DEFAULT 0;
+GO
+
+CREATE INDEX [IX_Payments_TreatmentPackageId] ON [Payments] ([TreatmentPackageId]);
+GO
+
+ALTER TABLE [Payments] ADD CONSTRAINT [FK_Payments_Appointments_AppointmentId] FOREIGN KEY ([AppointmentId]) REFERENCES [Appointments] ([Id]);
+GO
+
+ALTER TABLE [Payments] ADD CONSTRAINT [FK_Payments_TreatmentCycles_TreatmentCycleId] FOREIGN KEY ([TreatmentCycleId]) REFERENCES [TreatmentCycles] ([Id]);
+GO
+
+ALTER TABLE [Payments] ADD CONSTRAINT [FK_Payments_TreatmentPackages_TreatmentPackageId] FOREIGN KEY ([TreatmentPackageId]) REFERENCES [TreatmentPackages] ([Id]) ON DELETE NO ACTION;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250707035713_ModifyPayments', N'8.0.16');
+GO
+
+COMMIT;
+GO
+

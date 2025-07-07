@@ -35,6 +35,10 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         private IReviewRepository? _reviews;
         private INotificationRepository? _notifications;
 
+        // Payment Repository instances
+        private IPaymentRepository? _paymentRepository;
+        private IPaymentLogRepository? _paymentLogRepository;
+
         public UnitOfWork(ApplicationDbContext context)
         {
             _context = context;
@@ -64,6 +68,10 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         // Content & Communication Repositories
         public IReviewRepository Reviews => _reviews ??= new ReviewRepository(_context);
         public INotificationRepository Notifications => _notifications ??= new NotificationRepository(_context);
+
+        // Payment Repositories
+        public IPaymentRepository PaymentRepository => _paymentRepository ??= new PaymentRepository(_context);
+        public IPaymentLogRepository PaymentLogRepository => _paymentLogRepository ??= new PaymentLogRepository(_context);
 
         public async Task<int> SaveChangesAsync()
         {

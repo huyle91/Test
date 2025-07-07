@@ -4,6 +4,7 @@ using InfertilityTreatment.Data.Context;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace InfertilityTreatment.Data.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250707020906_AddPayments")]
+    partial class AddPayments
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -551,9 +554,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<int?>("TreatmentCycleId")
                         .HasColumnType("int");
 
-                    b.Property<int>("TreatmentPackageId")
-                        .HasColumnType("int");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -573,8 +573,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("TransactionId");
 
                     b.HasIndex("TreatmentCycleId");
-
-                    b.HasIndex("TreatmentPackageId");
 
                     b.ToTable("Payments", (string)null);
                 });
@@ -1222,9 +1220,10 @@ namespace InfertilityTreatment.Data.Migrations
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Payment", b =>
                 {
-                    b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", null)
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", "Appointment")
                         .WithMany("Payments")
-                        .HasForeignKey("AppointmentId");
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("InfertilityTreatment.Entity.Entities.Customer", "Customer")
                         .WithMany("Payments")
@@ -1232,19 +1231,16 @@ namespace InfertilityTreatment.Data.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", null)
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
                         .WithMany("Payments")
-                        .HasForeignKey("TreatmentCycleId");
+                        .HasForeignKey("TreatmentCycleId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
-                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentPackage", "TreatmentPackage")
-                        .WithMany()
-                        .HasForeignKey("TreatmentPackageId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                    b.Navigation("Appointment");
 
                     b.Navigation("Customer");
 
-                    b.Navigation("TreatmentPackage");
+                    b.Navigation("TreatmentCycle");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.PaymentLog", b =>

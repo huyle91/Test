@@ -9,7 +9,7 @@ namespace InfertilityTreatment.Business.Interfaces
     public interface IAnalyticsService
     {
         // Dashboard Analytics
-        Task<DashboardStatsDto> GetDashboardStatsAsync(UserRole role, int userId, DateRangeDto dateRange);
+        Task<DashboardStatsDto> GetDashboardStatsAsync(UserRole role, int? userId, DateRangeDto dateRange);
         
         // Treatment Success Rates
         Task<PaginatedResultDto<TreatmentSuccessRateDto>> GetTreatmentSuccessRatesAsync(SuccessRateFilterDto filter, PaginationQueryDTO pagination);

@@ -6,6 +6,7 @@ using InfertilityTreatment.Business.Validators;
 using InfertilityTreatment.Business.Mappings;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Data.Repositories.Implementations;
+using InfertilityTreatment.Entity.Constants;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -65,6 +66,9 @@ namespace InfertilityTreatment.API.Extensions
 
             services.AddScoped<IEmailService, EmailService>();
 
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IPaymentLogRepository, PaymentLogRepository>();
+
             // Week 6 Foundation Services
             services.AddScoped<IAnalyticsService, AnalyticsService>();
             services.AddScoped<IPaymentService, PaymentService>();
@@ -93,6 +97,15 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
             services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
 
+            return services;
+        }
+
+        /// <summary>
+        /// Configure Payment Gateway settings
+        /// </summary>
+        public static IServiceCollection AddPaymentGateways(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<PaymentGatewayConfig>(configuration.GetSection("PaymentGateways"));
             return services;
         }
 

@@ -12,6 +12,7 @@ using OfficeOpenXml;
 using iTextSharp.text;
 using iTextSharp.text.pdf;
 using System.IO;
+using InfertilityTreatment.Entity.Entities;
 
 namespace InfertilityTreatment.Business.Services
 {
@@ -24,14 +25,20 @@ namespace InfertilityTreatment.Business.Services
             _unitOfWork = unitOfWork;
         }
 
-        public async Task<DashboardStatsDto> GetDashboardStatsAsync(UserRole role, int userId, DateRangeDto dateRange)
+        public async Task<DashboardStatsDto> GetDashboardStatsAsync(UserRole role, int? userId, DateRangeDto dateRange)
         {
             var startDate = dateRange.StartDate;
             var endDate = dateRange.EndDate;
-            var user = await _unitOfWork.Users.GetByIdWithProfilesAsync(userId);
-            if (user == null)
+            
+            // For non-admin roles, we need to validate the user exists
+            User user = null;
+            if (userId.HasValue)
             {
-                throw new NotFoundException("User not found");
+                user = await _unitOfWork.Users.GetByIdWithProfilesAsync(userId.Value);
+                if (user == null)
+                {
+                    throw new NotFoundException("User not found");
+                }
             }
             
             // Get all cycles and filter by date
@@ -39,16 +46,17 @@ namespace InfertilityTreatment.Business.Services
             var cycles = allCycles.Where(c => c.CreatedAt >= startDate && c.CreatedAt <= endDate);
 
             // Filter by user role
-            if (role == UserRole.Doctor)
+            if (role == UserRole.Doctor && userId.HasValue)
             {
-                userId = user.Doctor.Id;
-                cycles = cycles.Where(c => c.DoctorId == userId);
+                var doctorId = user?.Doctor?.Id ?? userId.Value;
+                cycles = cycles.Where(c => c.DoctorId == doctorId);
             }
-            else if (role == UserRole.Customer)
+            else if (role == UserRole.Customer && userId.HasValue)
             {
-                userId = user.Customer.Id;
-                cycles = cycles.Where(c => c.CustomerId == userId);
+                var customerId = user?.Customer?.Id ?? userId.Value;
+                cycles = cycles.Where(c => c.CustomerId == customerId);
             }
+            // For Admin role, we don't filter by userId - show all data for the specified role
 
             var cyclesList = cycles.ToList();
 
@@ -56,22 +64,24 @@ namespace InfertilityTreatment.Business.Services
             var allAppointments = await _unitOfWork.Appointments.GetAllAsync();
             var appointments = allAppointments.Where(a => a.CreatedAt >= startDate && a.CreatedAt <= endDate);
 
-            if (role == UserRole.Doctor)
+            if (role == UserRole.Doctor && userId.HasValue)
             {
-                appointments = appointments.Where(a => a.DoctorId == userId);
+                var doctorId = user?.Doctor?.Id ?? userId.Value;
+                appointments = appointments.Where(a => a.DoctorId == doctorId);
             }
-            else if (role == UserRole.Customer)
+            else if (role == UserRole.Customer && userId.HasValue)
             {
                 var customerCycleIds = cyclesList.Select(c => c.Id).ToList();
                 appointments = appointments.Where(a => customerCycleIds.Contains(a.CycleId));
             }
+            // For Admin role, we don't filter appointments - show all data for the specified role
 
             var appointmentsList = appointments.ToList();
 
             // Calculate stats
-            var totalPatients = role == UserRole.Doctor
+            var totalPatients = role == UserRole.Doctor && userId.HasValue
                 ? cyclesList.Select(c => c.CustomerId).Distinct().Count()
-                : (role == UserRole.Customer ? 1 : cyclesList.Select(c => c.CustomerId).Distinct().Count());
+                : (role == UserRole.Customer && userId.HasValue ? 1 : cyclesList.Select(c => c.CustomerId).Distinct().Count());
 
             var activeTreatments = cyclesList.Count(c => c.Status == CycleStatus.InProgress);
             var completedTreatments = cyclesList.Count(c => c.Status == CycleStatus.Completed);

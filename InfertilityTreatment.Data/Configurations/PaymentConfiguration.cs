@@ -40,21 +40,18 @@ namespace InfertilityTreatment.Data.Configurations
                 .HasForeignKey(p => p.CustomerId)
                 .OnDelete(DeleteBehavior.Restrict);
 
-            builder.HasOne(p => p.TreatmentCycle)
-                .WithMany(tc => tc.Payments)
-                .HasForeignKey(p => p.TreatmentCycleId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            builder.HasOne(p => p.Appointment)
-                .WithMany(a => a.Payments)
-                .HasForeignKey(p => p.AppointmentId)
-                .OnDelete(DeleteBehavior.SetNull);
+            builder.HasOne(p => p.TreatmentPackage)
+                .WithMany() // TreatmentPackage doesn't have a Payments navigation property
+                .HasForeignKey(p => p.TreatmentPackageId)
+                .OnDelete(DeleteBehavior.Restrict);
 
             // Indexes
             builder.HasIndex(p => p.PaymentId)
                 .IsUnique();
 
             builder.HasIndex(p => p.CustomerId);
+
+            builder.HasIndex(p => p.TreatmentPackageId);
 
             builder.HasIndex(p => p.Status);
 

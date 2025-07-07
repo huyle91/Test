@@ -14,9 +14,8 @@ namespace InfertilityTreatment.Entity.Entities
         [Required]
         public int CustomerId { get; set; }
 
-        public int? TreatmentCycleId { get; set; }
-
-        public int? AppointmentId { get; set; }
+        [Required]
+        public int TreatmentPackageId { get; set; }
 
         [Required]
         [Column(TypeName = "decimal(12,2)")]
@@ -38,18 +37,19 @@ namespace InfertilityTreatment.Entity.Entities
         public DateTime? ProcessedAt { get; set; }
 
         [Column(TypeName = "nvarchar(max)")]
+        public string? PaymentGatewayResponse { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
         public string? Notes { get; set; }
 
         // Navigation Properties
         [ForeignKey(nameof(CustomerId))]
         public virtual Customer Customer { get; set; } = null!;
 
-        [ForeignKey(nameof(TreatmentCycleId))]
-        public virtual TreatmentCycle? TreatmentCycle { get; set; }
-
-        [ForeignKey(nameof(AppointmentId))]
-        public virtual Appointment? Appointment { get; set; }
+        [ForeignKey(nameof(TreatmentPackageId))]
+        public virtual TreatmentPackage TreatmentPackage { get; set; } = null!;
 
         public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
+        public virtual ICollection<PaymentLog> PaymentLogs { get; set; } = new List<PaymentLog>();
     }
 }

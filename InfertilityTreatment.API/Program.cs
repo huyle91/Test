@@ -27,6 +27,9 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 // Add Business Services
 builder.Services.AddBusinessServices();
 
+// Add Payment Gateway Configuration
+builder.Services.AddPaymentGateways(builder.Configuration);
+
 // Add JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
 

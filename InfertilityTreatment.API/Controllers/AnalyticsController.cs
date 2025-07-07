@@ -101,7 +101,16 @@ namespace InfertilityTreatment.API.Controllers
                     EndDate = defaultEndDate
                 };
 
-                var stats = await _analyticsService.GetDashboardStatsAsync(userRole, userId, dateRange);
+                // For Admin/Manager querying other roles, pass null userId to get all data
+                // For Doctor/Customer, pass their own userId to get filtered data
+                int? serviceUserId = null;
+                if (roleClaim == "Doctor" || roleClaim == "Customer")
+                {
+                    serviceUserId = userId;
+                }
+                // For Admin/Manager, serviceUserId remains null to get all data for the target role
+
+                var stats = await _analyticsService.GetDashboardStatsAsync(userRole, serviceUserId, dateRange);
 
                 return Ok(new ApiResponseDto<DashboardStatsDto>
                 {

@@ -82,7 +82,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             if (existingPhase == null)
             {
-                throw new Exception("Treatment phase not found.");
+                throw new InvalidOperationException("Treatment phase not found.");
             }
             existingPhase.PhaseName = treatmentPhase.PhaseName;
             existingPhase.PhaseOrder = treatmentPhase.PhaseOrder;

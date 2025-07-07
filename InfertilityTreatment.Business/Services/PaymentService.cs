@@ -90,7 +90,7 @@ namespace InfertilityTreatment.Business.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error creating VNPay payment: {ex.Message}", ex);
+                throw new ApplicationException($"Error creating VNPay payment: {ex.Message}", ex);
             }
         }
 

@@ -96,7 +96,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             if (treatmentCycle == null)
             {
-                return null;
+                throw new InvalidOperationException("Cycle not found.");
             }
 
             return treatmentCycle;
@@ -108,7 +108,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             var treatmentCycle = await _context.TreatmentCycles.FirstOrDefaultAsync(tc => tc.Id == cycleId);
             if (treatmentCycle == null)
             {
-                throw new Exception("Cycle not found.");
+                throw new InvalidOperationException("Cycle not found.");
             }
 
             treatmentCycle.DoctorId = doctorId;
@@ -123,7 +123,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             var cycle = _context.TreatmentCycles.Find(cycleId);
             if (cycle == null)
             {
-                throw new Exception("Cycle not found.");
+                throw new InvalidOperationException("Cycle not found.");
             }
             cycle.Status = status;
 
@@ -140,6 +140,14 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
         {
             return await _context.TreatmentCycles
                 .FirstOrDefaultAsync(tc => tc.CustomerId == customerId && tc.CycleNumber == cycleNumber && tc.IsActive);
+        }
+
+        public async Task<TreatmentCycle?> GetCycleByCustomerAndNumberAsync(int customerId, int cycleNumber)
+        {
+            return await _context.TreatmentCycles
+                .FirstOrDefaultAsync(tc => tc.CustomerId == customerId &&
+                                           tc.CycleNumber == cycleNumber &&
+                                           tc.IsActive);
         }
     }
 }

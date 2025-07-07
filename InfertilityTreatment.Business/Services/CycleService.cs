@@ -129,45 +129,31 @@ namespace InfertilityTreatment.Business.Services
                 // Validate Customer
                 var customer = await _unitOfWork.Customers.GetByIdAsync(createCycleDto.CustomerId);
                 if (customer == null || !customer.IsActive)
-                {
-                    throw new ArgumentException("Customer does not exist or is inactive.");
-                }
-
-                // Validate Doctor
-                var doctor = await _unitOfWork.Doctors.GetDoctorByIdAsync(createCycleDto.DoctorId);
-                if (doctor == null || !doctor.IsActive || !doctor.IsAvailable)
-                {
-                    throw new ArgumentException("Doctor does not exist, is inactive, or is not available.");
-                }
+                    throw new ArgumentException($"Customer with ID {createCycleDto.CustomerId} does not exist or is inactive");
 
                 // Validate Package
                 var package = await _unitOfWork.TreatmentPackages.GetByIdAsync(createCycleDto.PackageId);
                 if (package == null || !package.IsActive)
-                {
-                    throw new ArgumentException("Treatment package does not exist or is inactive.");
-                }
+                    throw new ArgumentException($"Treatment package with ID {createCycleDto.PackageId} does not exist or is inactive");
 
-                // Check duplicate CycleNumber for Customer
-                var existingCycle = await _treatmentCycleRepository.GetByCustomerAndNumberAsync(createCycleDto.CustomerId, createCycleDto.CycleNumber);
+                // Validate CycleNumber uniqueness
+                var existingCycle = await _treatmentCycleRepository.GetCycleByCustomerAndNumberAsync(
+                    createCycleDto.CustomerId, createCycleDto.CycleNumber);
                 if (existingCycle != null)
-                {
-                    throw new InvalidOperationException($"CycleNumber {createCycleDto.CycleNumber} already exists for this customer.");
-                }
+                    throw new ArgumentException($"Cycle number {createCycleDto.CycleNumber} already exists for this customer");
+
+                // Validate date logic
+                ValidateDateLogic(createCycleDto);
 
                 var cycle = await _treatmentCycleRepository.AddTreatmentCycleAsync(_mapper.Map<TreatmentCycle>(createCycleDto));
-
-                if (cycle == null)
-                {
-                    throw new Exception("Unable to create TreatmentCycle.");
-                }
-
                 await _unitOfWork.CommitTransactionAsync();
+
                 return _mapper.Map<CycleResponseDto>(cycle);
             }
-            catch (Exception ex)
+            catch
             {
                 await _unitOfWork.RollbackTransactionAsync();
-                throw new ApplicationException($"{ex.Message}", ex);
+                throw;
             }
         }
         public async Task<CycleDetailDto> GetCycleByIdAsync(int cycleId)
@@ -178,7 +164,7 @@ namespace InfertilityTreatment.Business.Services
 
                 if (cycle == null)
                 {
-                    throw new Exception("Unable to get TreatmentCycle.");
+                    throw new InvalidOperationException("Unable to get TreatmentCycle.");
                 }
 
                 return _mapper.Map<CycleDetailDto>(cycle);
@@ -252,6 +238,29 @@ namespace InfertilityTreatment.Business.Services
            var cycle = _mapper.Map<TreatmentCycle>(dto);
             cycle.Id = cycleId;
             return _treatmentCycleRepository.UpdateTreatmentCycleAsync(cycle);
+        }
+
+        private void ValidateDateLogic(CreateCycleDto dto)
+        {
+            if (dto.StartDate.HasValue && dto.ExpectedEndDate.HasValue)
+            {
+                if (dto.StartDate >= dto.ExpectedEndDate)
+                    throw new ArgumentException("StartDate must be before ExpectedEndDate");
+            }
+
+            if (dto.ActualEndDate.HasValue && dto.StartDate.HasValue)
+            {
+                if (dto.ActualEndDate <= dto.StartDate)
+                    throw new ArgumentException("ActualEndDate must be after StartDate");
+            }
+
+            if (dto.ExpectedEndDate.HasValue)
+            {
+                if (dto.ExpectedEndDate < DateTime.UtcNow.Date)
+                    throw new ArgumentException("ExpectedEndDate cannot be in the past");
+                if (dto.ExpectedEndDate > DateTime.UtcNow.AddYears(2))
+                    throw new ArgumentException("ExpectedEndDate is too far in the future");
+            }
         }
     }
 }

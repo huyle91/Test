@@ -17,9 +17,7 @@ namespace InfertilityTreatment.Entity.Entities
         [MaxLength(200)]
         public string PhaseName { get; set; } = string.Empty;
         public int PhaseOrder { get; set; }
-
-        public PhaseStatus Status { get; set; } = PhaseStatus.Pending;
-
+        public PhaseStatus Status { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
         [Column(TypeName = "decimal(12,2)")]

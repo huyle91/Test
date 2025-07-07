@@ -82,7 +82,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             var doctor = await _context.Doctors.FindAsync(doctorId);
             if (doctor == null)
             {
-                throw new Exception($"Doctor with ID {doctorId} not found.");
+                throw new InvalidOperationException($"Doctor with ID {doctorId} not found.");
             }
 
             doctor.SuccessRate = successRate ?? 0;

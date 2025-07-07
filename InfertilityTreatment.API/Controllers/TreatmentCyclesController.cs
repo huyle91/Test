@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using FluentValidation;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -18,19 +19,37 @@ namespace InfertilityTreatment.API.Controllers
     public class TreatmentCyclesController : ControllerBase
     {
         private readonly ICycleService _cycleService;
-        public TreatmentCyclesController(ICycleService cycleService)
+        private readonly IValidator<CreateCycleDto> _createCycleValidator;
+        public TreatmentCyclesController(ICycleService cycleService, IValidator<CreateCycleDto> createCycleValidator)
         {
             _cycleService = cycleService;
+            _createCycleValidator = createCycleValidator;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateCycle([FromBody] CreateCycleDto createCycleDto)
         {
-            var cycleResponse = await _cycleService.CreateCycleAsync(createCycleDto);
-            if (cycleResponse == null)
-                return BadRequest("Failed to create treatment cycle. Please verify input data.");
+            var validationResult = await _createCycleValidator.ValidateAsync(createCycleDto);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.ToDictionary());
 
-            return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(cycleResponse, "Treatment cycle created successfully."));
+            try
+            {
+                var cycleResponse = await _cycleService.CreateCycleAsync(createCycleDto);
+                return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(cycleResponse, "Treatment cycle created successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(500, ApiResponseDto<string>.CreateError(ex.Message));
+            }
         }
 
         [HttpGet]
@@ -170,16 +189,27 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpPost("{id}/phases")]
-        public async Task<IActionResult> CreatePhase(int id, CreatePhaseDto createPhaseDto)
+        public async Task<IActionResult> CreatePhase(int id, [FromBody]CreatePhaseDto createPhaseDto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 var result = await _cycleService.AddPhaseAsync(id, createPhaseDto);
                 return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "New phase added to cycle."));
             }
-            catch (Exception)
+            catch (ArgumentException ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<PhaseResponseDto>.CreateError("Error creating new phase."));
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(500, ApiResponseDto<string>.CreateError(ex.Message));
             }
         }
 

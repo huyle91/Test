@@ -137,7 +137,7 @@ namespace InfertilityTreatment.Business.Services
 
             var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
             if (appointment == null)
-                throw new ArgumentException("Appointment not found");
+                throw new InvalidOperationException("Appointment not found");
 
             var doctorSchedule = await _unitOfWork.DoctorSchedules.GetByIdAsync(doctorScheduleId);
             if (doctorSchedule == null)
@@ -175,7 +175,7 @@ namespace InfertilityTreatment.Business.Services
                 throw new ArgumentException("AppointmentId is required and must be greater than 0");
             
                 var appointment = await _unitOfWork.Appointments.GetByIdAsync(id);
-                if (appointment == null) throw new Exception("Appointment not found");
+                if (appointment == null) throw new InvalidOperationException("Appointment not found");
 
                 appointment.Status = AppointmentStatus.Cancelled;
                 await _unitOfWork.Appointments.UpdateAsync(appointment);

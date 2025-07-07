@@ -65,7 +65,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error: {ex.Message}");
+                throw new ApplicationException($"Error: {ex.Message}");
             }
         }
 
@@ -89,7 +89,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error: {ex.Message}");
+                throw new ApplicationException($"Error: {ex.Message}");
             }
         }
 

@@ -429,7 +429,7 @@ namespace InfertilityTreatment.Business.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error generating PDF report: {ex.Message}", ex);
+                throw new ApplicationException($"Error generating PDF report: {ex.Message}", ex);
             }
         }
 
@@ -481,7 +481,7 @@ namespace InfertilityTreatment.Business.Services
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error generating Excel report: {ex.Message}", ex);
+                throw new ApplicationException($"Error generating Excel report: {ex.Message}", ex);
             }
         }
 

@@ -26,6 +26,9 @@ namespace InfertilityTreatment.Business.Validators
             RuleFor(x => x.DoctorId)
                 .MustAsync(DoctorAvailable).WithMessage("Doctor is inactive or not found");
 
+            RuleFor(x => x.CustomerId)
+                .MustAsync(CustomerIsActive).WithMessage("Customer does not exist or is inactive");
+
             RuleFor(x => x.PackageId)
                 .MustAsync(PackageActive).WithMessage("Treatment package is not available");
 
@@ -64,6 +67,11 @@ namespace InfertilityTreatment.Business.Validators
         {
             var doctor = await _doctorRepository.GetDoctorByIdAsync(doctorId);
             return doctor != null && doctor.IsActive;
+        }
+        private async Task<bool> CustomerIsActive(int customerId, CancellationToken ct)
+        {
+            var customer = await _customerRepository.GetByIdAsync(customerId);
+            return customer != null && customer.IsActive;
         }
 
         private async Task<bool> PackageActive(int packageId, CancellationToken ct)

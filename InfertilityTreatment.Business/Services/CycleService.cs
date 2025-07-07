@@ -25,7 +25,7 @@ namespace InfertilityTreatment.Business.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<CycleService> _logger;
-        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper,ITreatmentPhaseRepository treatmentPhaseRepository,IDoctorRepository doctorRepository, ILogger<CycleService> logger, IUnitOfWork unitOfWork)
+        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper, ITreatmentPhaseRepository treatmentPhaseRepository, IDoctorRepository doctorRepository, ILogger<CycleService> logger, IUnitOfWork unitOfWork)
         {
             _treatmentCycleRepository = treatmentCycleRepository;
             _mapper = mapper;
@@ -119,22 +119,22 @@ namespace InfertilityTreatment.Business.Services
 
         public Task<decimal> CalculateCycleCostAsync(int cycleId)
         {
-           return _treatmentCycleRepository.CalculatePhaseCostAsync(cycleId);
+            return _treatmentCycleRepository.CalculatePhaseCostAsync(cycleId);
         }
         public async Task<CycleResponseDto> CreateCycleAsync(CreateCycleDto createCycleDto)
         {
             await _unitOfWork.BeginTransactionAsync();
             try
             {
-                // Validate Customer
-                var customer = await _unitOfWork.Customers.GetByIdAsync(createCycleDto.CustomerId);
-                if (customer == null || !customer.IsActive)
-                    throw new ArgumentException($"Customer with ID {createCycleDto.CustomerId} does not exist or is inactive");
-
                 // Validate Package
                 var package = await _unitOfWork.TreatmentPackages.GetByIdAsync(createCycleDto.PackageId);
                 if (package == null || !package.IsActive)
                     throw new ArgumentException($"Treatment package with ID {createCycleDto.PackageId} does not exist or is inactive");
+
+                // Validate Doctor
+                    var doctor = await _unitOfWork.Doctors.GetDoctorByIdAsync(createCycleDto.DoctorId);
+                    if (doctor == null || !doctor.IsActive || !doctor.IsAvailable)
+                        throw new ArgumentException($"Doctor with ID {createCycleDto.DoctorId} does not exist, is inactive, or not available");
 
                 // Validate CycleNumber uniqueness
                 var existingCycle = await _treatmentCycleRepository.GetCycleByCustomerAndNumberAsync(
@@ -235,7 +235,7 @@ namespace InfertilityTreatment.Business.Services
         }
         public Task<bool> UpdateCycleAsync(int cycleId, UpdateCycleDto dto)
         {
-           var cycle = _mapper.Map<TreatmentCycle>(dto);
+            var cycle = _mapper.Map<TreatmentCycle>(dto);
             cycle.Id = cycleId;
             return _treatmentCycleRepository.UpdateTreatmentCycleAsync(cycle);
         }

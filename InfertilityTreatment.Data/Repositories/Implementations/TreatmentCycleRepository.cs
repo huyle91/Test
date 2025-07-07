@@ -136,12 +136,6 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             return _context.SaveChangesAsync().ContinueWith(t => t.Result > 0);
         }
 
-        public async Task<TreatmentCycle?> GetByCustomerAndNumberAsync(int customerId, int cycleNumber)
-        {
-            return await _context.TreatmentCycles
-                .FirstOrDefaultAsync(tc => tc.CustomerId == customerId && tc.CycleNumber == cycleNumber && tc.IsActive);
-        }
-
         public async Task<TreatmentCycle?> GetCycleByCustomerAndNumberAsync(int customerId, int cycleNumber)
         {
             return await _context.TreatmentCycles

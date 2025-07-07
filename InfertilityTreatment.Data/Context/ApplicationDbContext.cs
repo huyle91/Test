@@ -34,6 +34,11 @@ namespace InfertilityTreatment.Data.Context
         public DbSet<Medication> Medications { get; set; }
         public DbSet<Prescription> Prescriptions { get; set; }
 
+        // Payment & Billing DbSets
+        public DbSet<Payment> Payments { get; set; }
+        public DbSet<Invoice> Invoices { get; set; }
+        public DbSet<InvoiceItem> InvoiceItems { get; set; }
+
         // Content & Feedback DbSets
         //public DbSet<BlogPost> BlogPosts { get; set; }
         public DbSet<Review> Reviews { get; set; }
@@ -44,7 +49,38 @@ namespace InfertilityTreatment.Data.Context
             // Apply all entity configurations from assembly
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
 
+            // Configure lazy loading strategically
+            ConfigureLazyLoading(modelBuilder);
+
             base.OnModelCreating(modelBuilder);
+        }
+
+        private void ConfigureLazyLoading(ModelBuilder modelBuilder)
+        {
+            // Enable lazy loading for collections but be strategic about it
+            // to avoid N+1 queries in critical paths
+            
+            // Heavy navigation properties - disable lazy loading
+            modelBuilder.Entity<TreatmentCycle>()
+                .Navigation(e => e.Appointments)
+                .EnableLazyLoading(false);
+                
+            modelBuilder.Entity<TreatmentCycle>()
+                .Navigation(e => e.TreatmentPhases)
+                .EnableLazyLoading(false);
+                
+            modelBuilder.Entity<Customer>()
+                .Navigation(e => e.TreatmentCycles)
+                .EnableLazyLoading(false);
+                
+            // Payment/Invoice collections - enable lazy loading (typically smaller)
+            modelBuilder.Entity<Customer>()
+                .Navigation(e => e.Payments)
+                .EnableLazyLoading(true);
+                
+            modelBuilder.Entity<Customer>()
+                .Navigation(e => e.Invoices)
+                .EnableLazyLoading(true);
         }
 
         public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

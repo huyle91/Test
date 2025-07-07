@@ -33,5 +33,7 @@ namespace InfertilityTreatment.Entity.Entities
 
         public virtual ICollection<TreatmentCycle> TreatmentCycles { get; set; } = new List<TreatmentCycle>();
         public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     }
 }

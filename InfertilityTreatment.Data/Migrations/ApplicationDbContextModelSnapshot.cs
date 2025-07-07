@@ -72,6 +72,8 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasIndex("DoctorScheduleId");
 
+                    b.HasIndex("ScheduledDateTime");
+
                     b.ToTable("Appointments", (string)null);
                 });
 
@@ -222,6 +224,206 @@ namespace InfertilityTreatment.Data.Migrations
                     b.ToTable("DoctorSchedules");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Invoice", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DiscountAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime?>("DueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime>("IssueDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("PaidDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PaymentId")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SubTotal")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<string>("Terms")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("TreatmentCycleId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("DueDate");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("IssueDate");
+
+                    b.HasIndex("PaymentId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TreatmentCycleId");
+
+                    b.ToTable("Invoices", (string)null);
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.InvoiceItem", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("InvoiceId")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("MedicationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("TotalPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("TreatmentServiceId")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceId");
+
+                    b.HasIndex("MedicationId");
+
+                    b.HasIndex("TreatmentServiceId");
+
+                    b.ToTable("InvoiceItems", (string)null);
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Medication", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ActiveIngredient")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Manufacturer")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("SideEffects")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("StorageInstructions")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActiveIngredient");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Medications");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
                 {
                     b.Property<int>("Id")
@@ -285,9 +487,203 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("IsRead");
+
                     b.HasIndex("UserId");
 
                     b.ToTable("notifications", (string)null);
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Payment", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int?>("AppointmentId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentGatewayResponse")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("PaymentId")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("PaymentMethod")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<string>("TransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("TreatmentCycleId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("TreatmentPackageId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("CreatedAt");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("PaymentId")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TransactionId");
+
+                    b.HasIndex("TreatmentCycleId");
+
+                    b.HasIndex("TreatmentPackageId");
+
+                    b.ToTable("Payments", (string)null);
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.PaymentLog", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("PaymentId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("RequestData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ResponseData")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentId");
+
+                    b.ToTable("PaymentLogs");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Prescription", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Dosage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("Duration")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Frequency")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Instructions")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MedicationId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("PhaseId")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicationId");
+
+                    b.HasIndex("PhaseId");
+
+                    b.HasIndex("StartDate");
+
+                    b.HasIndex("StartDate", "EndDate");
+
+                    b.ToTable("Prescriptions");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.RefreshToken", b =>
@@ -323,6 +719,59 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("RefreshTokens");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Review", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Comment")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("CustomerId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("CycleId")
+                        .HasColumnType("int");
+
+                    b.Property<int?>("DoctorId")
+                        .IsRequired()
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsApproved")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ReviewType")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CustomerId");
+
+                    b.HasIndex("CycleId");
+
+                    b.HasIndex("DoctorId");
+
+                    b.ToTable("Reviews", (string)null);
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TestResult", b =>
@@ -372,6 +821,10 @@ namespace InfertilityTreatment.Data.Migrations
                     b.HasIndex("AppointmentId");
 
                     b.HasIndex("CycleId");
+
+                    b.HasIndex("TestDate");
+
+                    b.HasIndex("TestType");
 
                     b.ToTable("TestResults", (string)null);
                 });
@@ -536,8 +989,11 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CycleId", "PhaseOrder")
-                        .IsUnique();
+                    b.HasIndex("CycleId");
+
+                    b.HasIndex("PhaseOrder");
+
+                    b.HasIndex("CycleId", "PhaseOrder");
 
                     b.ToTable("TreatmentPhases");
                 });
@@ -695,6 +1151,64 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Navigation("Doctor");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Invoice", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", "Appointment")
+                        .WithMany("Invoices")
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Customer", "Customer")
+                        .WithMany("Invoices")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Payment", "Payment")
+                        .WithMany("Invoices")
+                        .HasForeignKey("PaymentId")
+                        .HasPrincipalKey("PaymentId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
+                        .WithMany("Invoices")
+                        .HasForeignKey("TreatmentCycleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Payment");
+
+                    b.Navigation("TreatmentCycle");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.InvoiceItem", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Invoice", "Invoice")
+                        .WithMany("InvoiceItems")
+                        .HasForeignKey("InvoiceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Medication", "Medication")
+                        .WithMany()
+                        .HasForeignKey("MedicationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentService", "TreatmentService")
+                        .WithMany()
+                        .HasForeignKey("TreatmentServiceId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Invoice");
+
+                    b.Navigation("Medication");
+
+                    b.Navigation("TreatmentService");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Notification", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.User", "User")
@@ -706,6 +1220,63 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Payment", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Appointment", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("AppointmentId");
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Customer", "Customer")
+                        .WithMany("Payments")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", null)
+                        .WithMany("Payments")
+                        .HasForeignKey("TreatmentCycleId");
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentPackage", "TreatmentPackage")
+                        .WithMany()
+                        .HasForeignKey("TreatmentPackageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("TreatmentPackage");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.PaymentLog", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Payment", "Payment")
+                        .WithMany("PaymentLogs")
+                        .HasForeignKey("PaymentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Payment");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Prescription", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Medication", "Medication")
+                        .WithMany("Prescriptions")
+                        .HasForeignKey("MedicationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentPhase", "TreatmentPhase")
+                        .WithMany("Prescriptions")
+                        .HasForeignKey("PhaseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Medication");
+
+                    b.Navigation("TreatmentPhase");
+                });
+
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.RefreshToken", b =>
                 {
                     b.HasOne("InfertilityTreatment.Entity.Entities.User", "User")
@@ -715,6 +1286,32 @@ namespace InfertilityTreatment.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Review", b =>
+                {
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Customer", "Customer")
+                        .WithMany("Reviews")
+                        .HasForeignKey("CustomerId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.TreatmentCycle", "TreatmentCycle")
+                        .WithMany("Reviews")
+                        .HasForeignKey("CycleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("InfertilityTreatment.Entity.Entities.Doctor", "Doctor")
+                        .WithMany("Reviews")
+                        .HasForeignKey("DoctorId")
+                        .OnDelete(DeleteBehavior.NoAction)
+                        .IsRequired();
+
+                    b.Navigation("Customer");
+
+                    b.Navigation("Doctor");
+
+                    b.Navigation("TreatmentCycle");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TestResult", b =>
@@ -787,11 +1384,21 @@ namespace InfertilityTreatment.Data.Migrations
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Appointment", b =>
                 {
+                    b.Navigation("Invoices");
+
+                    b.Navigation("Payments");
+
                     b.Navigation("TestResults");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Customer", b =>
                 {
+                    b.Navigation("Invoices");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("Reviews");
+
                     b.Navigation("TreatmentCycles");
                 });
 
@@ -799,12 +1406,37 @@ namespace InfertilityTreatment.Data.Migrations
                 {
                     b.Navigation("Appointments");
 
+                    b.Navigation("Reviews");
+
                     b.Navigation("TreatmentCycles");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Invoice", b =>
+                {
+                    b.Navigation("InvoiceItems");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Medication", b =>
+                {
+                    b.Navigation("Prescriptions");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.Payment", b =>
+                {
+                    b.Navigation("Invoices");
+
+                    b.Navigation("PaymentLogs");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentCycle", b =>
                 {
                     b.Navigation("Appointments");
+
+                    b.Navigation("Invoices");
+
+                    b.Navigation("Payments");
+
+                    b.Navigation("Reviews");
 
                     b.Navigation("TestResults");
 
@@ -814,6 +1446,11 @@ namespace InfertilityTreatment.Data.Migrations
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPackage", b =>
                 {
                     b.Navigation("TreatmentCycles");
+                });
+
+            modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentPhase", b =>
+                {
+                    b.Navigation("Prescriptions");
                 });
 
             modelBuilder.Entity("InfertilityTreatment.Entity.Entities.TreatmentService", b =>

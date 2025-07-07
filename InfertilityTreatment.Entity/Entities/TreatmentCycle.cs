@@ -46,10 +46,10 @@ namespace InfertilityTreatment.Entity.Entities
         public virtual TreatmentPackage TreatmentPackage { get; set; } = null!;
 
         public virtual ICollection<TreatmentPhase> TreatmentPhases { get; set; } = new List<TreatmentPhase>();
-        //public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
-        //public virtual ICollection<TreatmentPhase> TreatmentPhases { get; set; } = new List<TreatmentPhase>();
         public virtual ICollection<Appointment> Appointments { get; set; } = new List<Appointment>();
         public virtual ICollection<TestResult> TestResults { get; set; } = new List<TestResult>();
-        //public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public virtual ICollection<Review> Reviews { get; set; } = new List<Review>();
+        public virtual ICollection<Payment> Payments { get; set; } = new List<Payment>();
+        public virtual ICollection<Invoice> Invoices { get; set; } = new List<Invoice>();
     }
 }

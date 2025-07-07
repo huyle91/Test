@@ -57,6 +57,10 @@ namespace InfertilityTreatment.Data.Configurations
                    .WithMany(a => a.TestResults) 
                    .HasForeignKey(tr => tr.AppointmentId)
                    .OnDelete(DeleteBehavior.Restrict);
+
+            builder.HasIndex(tr => tr.CycleId);
+            builder.HasIndex(tr => tr.TestDate);
+            builder.HasIndex(tr => tr.TestType);
         }
     }
 }

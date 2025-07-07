@@ -13,6 +13,7 @@ namespace InfertilityTreatment.Business.Interfaces
         Task<DoctorDetailDto> UpdateAvailabilityAsync(int doctorId, bool isAvailable);
         Task<List<DoctorResponseDto>> SearchDoctorsAsync(DoctorSearchDto searchDto);
         Task<DoctorDetailDto> CreateDoctorAsync(CreateDoctorDto createDoctorDto);
-        Task<DoctorDetailDto> ToggleAvailabilityAsync(int doctorId);
+        Task<DoctorDetailDto> ToggleAvailabilityAsync(int doctorId);       
+
     }
 }

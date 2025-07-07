@@ -34,7 +34,7 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpGet]
-        [Authorize(Roles = nameof(UserRole.Doctor) + "," + nameof(UserRole.Manager))]
+        [Authorize(Roles = nameof(UserRole.Doctor) + "," + nameof(UserRole.Manager) + "," + nameof(UserRole.Customer))]
         public async Task<IActionResult> GetTreatmentCycles([FromQuery] TreatmentCycleFilterDto filter)
         {
             if (filter.PageSize > 100)
@@ -42,11 +42,15 @@ namespace InfertilityTreatment.API.Controllers
 
             if (filter.PageNumber < 1)
                 filter.PageNumber = 1;
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            var roleStr = User.FindFirstValue(ClaimTypes.Role);
+            if (!Enum.TryParse<UserRole>(roleStr, out var userRole))
+                return Forbid();
 
-            if (filter.CustomerId.HasValue)
+            if (userRole == UserRole.Customer)
             {
-                var result = await _cycleService.GetCyclesByCustomerAsync(filter.CustomerId.Value, filter);
-                return Ok(ApiResponseDto<PaginatedResultDto<CycleResponseDto>>.CreateSuccess(result, "Retrieved cycles by customer successfully."));
+                var result = await _cycleService.GetCyclesByCustomerAsync(userId, filter);
+                return Ok(ApiResponseDto<PaginatedResultDto<CycleResponseDto>>.CreateSuccess(result, "Retrieved cycles by customer successfully.."));
             }
 
             if (filter.DoctorId.HasValue)
@@ -68,7 +72,7 @@ namespace InfertilityTreatment.API.Controllers
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
                 if (cycle.CustomerId != userId && !User.IsInRole("Admin") && cycle.DoctorId != userId)
                 {
-                    return Forbid(); 
+                    return Forbid();
                 }
                 return Ok(ApiResponseDto<CycleDetailDto>.CreateSuccess(cycle, "Cycle details retrieved successfully."));
             }
@@ -156,7 +160,7 @@ namespace InfertilityTreatment.API.Controllers
 
                 if (filter.PageNumber < 1)
                     filter.PageNumber = 1;
-                var result = await _cycleService.GetCyclePhasesAsync(id,filter);
+                var result = await _cycleService.GetCyclePhasesAsync(id, filter);
                 return Ok(ApiResponseDto<PaginatedResultDto<PhaseResponseDto>>.CreateSuccess(result, "Phases retrieved for cycle."));
             }
             catch (Exception)

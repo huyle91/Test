@@ -1,6 +1,7 @@
 ﻿using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace InfertilityTreatment.Data.Repositories.Interfaces
 {
@@ -12,5 +13,7 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<Customer> GetWithMedicalHistoryAsync(int customerId);
         Task<Customer?> UpdateMedicalHistoryAsync(int userId,string medicalHistory);
         Task<PaginatedResultDto<Customer?>> GetCustomers(CustomerFilterDto filter);
+
+        Task<IEnumerable<Customer>> GetAllWithUserAsync();
     }
 }

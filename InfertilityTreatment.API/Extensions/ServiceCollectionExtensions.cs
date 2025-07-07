@@ -6,11 +6,11 @@ using InfertilityTreatment.Business.Validators;
 using InfertilityTreatment.Business.Mappings;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Data.Repositories.Implementations;
+using InfertilityTreatment.Entity.Constants;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
-using InfertilityTreatment.Repository;
 
 namespace InfertilityTreatment.API.Extensions
 {
@@ -46,11 +46,40 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IDoctorScheduleService, DoctorScheduleService>();
 
             services.AddScoped<ITreatmentPhaseRepository, TreatmentPhaseRepository>();
+            services.AddScoped<ITreatmentPhaseService, TreatmentPhaseService>();
             services.AddScoped<ICycleService, CycleService>();
 
             services.AddScoped<ITestResultRepository, TestResultRepository>();
             services.AddScoped<ITestResultService, TestResultService>();
 
+            services.AddScoped<IMedicationRepository, MedicationRepository>();
+            services.AddScoped<IMedicationService, MedicationService>();
+
+            services.AddScoped<IPrescriptionRepository, PrescriptionRepository>();
+            services.AddScoped<IPrescriptionService, PrescriptionService>();
+
+            services.AddScoped<IReviewService, ReviewService>();
+            services.AddScoped<IReviewRepository, ReviewRepository>();
+
+            services.AddScoped<INotificationRepository, NotificationRepository>();
+            services.AddScoped<INotificationService, NotificationService>();
+
+            services.AddScoped<IEmailService, EmailService>();
+
+            services.AddScoped<IPaymentRepository, PaymentRepository>();
+            services.AddScoped<IPaymentLogRepository, PaymentLogRepository>();
+
+            // Week 6 Foundation Services
+            services.AddScoped<IAnalyticsService, AnalyticsService>();
+            services.AddScoped<IPaymentService, PaymentService>();
+            services.AddScoped<IBookingService, BookingService>();
+
+            // System Integration & Optimization Services
+            services.AddScoped<ICacheService, CacheService>();
+            services.AddScoped<IAuditLogService, AuditLogService>();
+            services.AddScoped<IQueryOptimizationService, QueryOptimizationService>();
+            services.AddMemoryCache();
+            services.AddHttpClient();
 
             // Business Services
             services.AddScoped<IAuthService, AuthService>();
@@ -68,6 +97,15 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IValidator<LoginRequestDto>, LoginRequestValidator>();
             services.AddScoped<IValidator<RegisterRequestDto>, RegisterRequestValidator>();
 
+            return services;
+        }
+
+        /// <summary>
+        /// Configure Payment Gateway settings
+        /// </summary>
+        public static IServiceCollection AddPaymentGateways(this IServiceCollection services, IConfiguration configuration)
+        {
+            services.Configure<PaymentGatewayConfig>(configuration.GetSection("PaymentGateways"));
             return services;
         }
 

@@ -23,5 +23,11 @@ namespace InfertilityTreatment.Business.Interfaces
         Task<bool> UpdatePhaseAsync(int phaseId, UpdatePhaseDto updatePhaseDto);
         Task<PaginatedResultDto<PhaseResponseDto>> GetCyclePhasesAsync(int cycleId, TreatmentPhaseFilterDto filter);
         Task<bool> UpdateCycleAsync(int cycleId, UpdateCycleDto dto);
+        
+        // New phase management methods
+        Task<PhaseResponseDto> StartPhaseAsync(int cycleId, int phaseId, StartPhaseDto dto);
+        Task<PhaseResponseDto> CompletePhaseAsync(int cycleId, int phaseId, CompletePhaseDto dto);
+        Task<PhaseProgressDto> GetPhaseProgressAsync(int cycleId, int phaseId);
+        Task<List<PhaseResponseDto>> GenerateDefaultPhasesAsync(int cycleId, GeneratePhasesDto dto);
     }
 }

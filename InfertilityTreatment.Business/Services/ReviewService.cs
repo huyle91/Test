@@ -54,8 +54,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto createReviewDto)
         {
-            try
-            {
+            
                 if (createReviewDto.Rating < 1 || createReviewDto.Rating > 5)
                 {
                     throw new ArgumentOutOfRangeException(nameof(createReviewDto.Rating), "Rating must be between 1 and 5.");
@@ -101,11 +100,7 @@ namespace InfertilityTreatment.Business.Services
                 }
 
                 return _mapper.Map<ReviewDto>(savedReview);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("An error occurred while creating the review.", ex);
-            }
+          
         }
 
 

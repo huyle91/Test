@@ -229,5 +229,114 @@ namespace InfertilityTreatment.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while updating the phase."));
             }
         }
+
+        #region Phase Management Endpoints BE-022
+
+        /// <summary>
+        /// Start a specific phase in a treatment cycle
+        /// </summary>
+        [HttpPatch("{cycleId}/phases/{phaseId}/start")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> StartPhase(int cycleId, int phaseId, [FromBody] StartPhaseDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.StartPhaseAsync(cycleId, phaseId, dto);
+                return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "Treatment Phase started successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while starting the phase."));
+            }
+        }
+
+        /// <summary>
+        /// Complete a specific phase in a treatment cycle
+        /// </summary>
+        [HttpPatch("{cycleId}/phases/{phaseId}/complete")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> CompletePhase(int cycleId, int phaseId, [FromBody] CompletePhaseDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.CompletePhaseAsync(cycleId, phaseId, dto);
+                return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "Treatment Phase completed successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while completing the phase."));
+            }
+        }
+
+        /// <summary>
+        /// Get progress information for a specific phase
+        /// </summary>
+        [HttpGet("{cycleId}/phases/{phaseId}/progress")]
+        [Authorize(Roles = "Doctor,Customer,Admin")]
+        public async Task<IActionResult> GetPhaseProgress(int cycleId, int phaseId)
+        {
+            try
+            {
+                var result = await _cycleService.GetPhaseProgressAsync(cycleId, phaseId);
+                return Ok(ApiResponseDto<PhaseProgressDto>.CreateSuccess(result, "Treatment Phase progress retrieved successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while retrieving phase progress."));
+            }
+        }
+
+        /// <summary>
+        /// Generate default phases for a treatment cycle based on treatment type
+        /// </summary>
+        [HttpPost("{cycleId}/phases/generate")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GenerateDefaultPhases(int cycleId, [FromBody] GeneratePhasesDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.GenerateDefaultPhasesAsync(cycleId, dto);
+                return Ok(ApiResponseDto<List<PhaseResponseDto>>.CreateSuccess(result, 
+                    $"Generated {result.Count} default phases for {dto.TreatmentType} treatment."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while generating default phases."));
+            }
+        }
+
+        #endregion
     }
 }

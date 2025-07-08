@@ -13,7 +13,6 @@ namespace InfertilityTreatment.Entity.DTOs.Review
         public int? DoctorId { get; set; }
         public int? CycleId { get; set; }
         public int Rating { get; set; }
-        public string ReviewType { get; set; } = string.Empty;
         public string Comment { get; set; } = string.Empty;
         public DateTime CreatedAt { get; set; }
         public bool IsActive

@@ -21,9 +21,6 @@ namespace InfertilityTreatment.Entity.DTOs.Review
         [Range(1, 5)]
         public int Rating { get; set; }
 
-        [MaxLength(50)]
-        public string ReviewType { get; set; } = string.Empty;
-
         public string Comment { get; set; } = string.Empty;
 
 

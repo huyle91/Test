@@ -36,7 +36,7 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<PaginatedResultDto<DoctorScheduleDto>>.CreateSuccess(result));
         }
 
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] CreateDoctorScheduleDto dto)
         {
@@ -44,7 +44,7 @@ namespace InfertilityTreatment.API.Controllers
             return CreatedAtAction(nameof(GetById), new { id = created.Id }, ApiResponseDto<DoctorScheduleDto>.CreateSuccess(created, "DoctorSchedule created successfully"));
         }
 
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
         [HttpPut("{id}")]
         public async Task<IActionResult> Update(int id, [FromBody] UpdateDoctorScheduleDto dto)
         {
@@ -52,7 +52,7 @@ namespace InfertilityTreatment.API.Controllers
             return Ok(ApiResponseDto<DoctorScheduleDto>.CreateSuccess(updated, "DoctorSchedule updated successfully"));
         }
 
-        [Authorize(Roles = "Doctor")]
+        [Authorize(Roles = "Doctor,Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {

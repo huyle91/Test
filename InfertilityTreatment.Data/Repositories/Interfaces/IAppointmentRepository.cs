@@ -25,5 +25,8 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<List<Appointment>> GetByDoctorAndDateAsync(int doctorId, DateTime date);
         Task<PaginatedResultDto<DoctorSchedule>> GetDoctorAvailabilityAsync(int doctorId, DateTime date, PaginationQueryDTO pagination);
         Task<Appointment?> GetByDoctorAndScheduleAsync(int doctorId, DateTime scheduledDate, int doctorScheduleId);
+        
+        // Additional methods for phase management
+        Task<List<Appointment>> GetAppointmentsByCycleIdAsync(int cycleId);
     }
 }

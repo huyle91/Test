@@ -147,6 +147,14 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 a.DoctorScheduleId == doctorScheduleId &&
                 a.Status != AppointmentStatus.Cancelled);
         }
+
+        public async Task<List<Appointment>> GetAppointmentsByCycleIdAsync(int cycleId)
+        {
+            return await _context.Appointments
+                .Where(a => a.CycleId == cycleId && a.IsActive)
+                .OrderBy(a => a.ScheduledDateTime)
+                .ToListAsync();
+        }
     }
 
 }

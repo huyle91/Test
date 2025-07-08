@@ -24,9 +24,6 @@ namespace InfertilityTreatment.Data.Configurations
             builder.Property(r => r.Comment)
                    .HasColumnType("nvarchar(max)");
 
-            builder.Property(r => r.ReviewType)
-                   .HasMaxLength(50);
-
             builder.Property(r => r.CreatedAt).IsRequired();
             builder.Property(r => r.UpdatedAt).IsRequired(false);
             builder.Property(r => r.IsActive).IsRequired();

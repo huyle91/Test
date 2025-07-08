@@ -1,6 +1,6 @@
 namespace InfertilityTreatment.Entity.Enums
 {
-    public enum PhaseStatus
+    public enum  PhaseStatus
     {
         Pending = 0,
         InProgress = 1,

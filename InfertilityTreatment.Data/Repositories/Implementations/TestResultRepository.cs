@@ -50,5 +50,13 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             var items = await query.Skip((pagination.PageNumber - 1) * pagination.PageSize).Take(pagination.PageSize).ToListAsync();
             return new PaginatedResultDto<TestResult>(items, totalCount, pagination.PageNumber, pagination.PageSize);
         }
+
+        public async Task<List<TestResult>> GetByCycleIdAsync(int cycleId)
+        {
+            return await _context.TestResults
+                .Where(tr => tr.CycleId == cycleId && tr.IsActive)
+                .OrderBy(tr => tr.TestDate)
+                .ToListAsync();
+        }
     }
 }

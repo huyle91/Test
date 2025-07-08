@@ -1015,3 +1015,34 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [TreatmentPhases] ADD [ActualStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentPhases] ADD [ScheduledStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [ActualStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [DoctorNotes] nvarchar(1000) NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [EstimatedCompletionDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [SpecialInstructions] nvarchar(max) NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [TreatmentPlan] nvarchar(2000) NULL;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250708124103_AddCycleInitializationFields', N'8.0.16');
+GO
+
+COMMIT;
+GO
+

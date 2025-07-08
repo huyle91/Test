@@ -127,5 +127,27 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 return false;
             }
         }
+
+        public async Task<TreatmentPhase?> GetFirstPhaseForCycleAsync(int cycleId)
+        {
+            return await _context.TreatmentPhases
+                .Where(tp => tp.CycleId == cycleId && tp.IsActive)
+                .OrderBy(tp => tp.PhaseOrder)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateAsync(TreatmentPhase phase)
+        {
+            try
+            {
+                _context.TreatmentPhases.Update(phase);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

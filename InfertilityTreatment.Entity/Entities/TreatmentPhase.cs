@@ -20,6 +20,8 @@ namespace InfertilityTreatment.Entity.Entities
         public PhaseStatus Status { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public DateTime? ActualStartDate { get; set; }
+        public DateTime? ScheduledStartDate { get; set; }
         [Column(TypeName = "decimal(12,2)")]
         public decimal Cost { get; set; }
         public string? Instructions { get; set; }

@@ -42,6 +42,13 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .FirstOrDefaultAsync(d => d.Id == doctorId);
         }
 
+        public async Task<Doctor?> GetByUserIdAsync(int userId)
+        {
+            return await _context.Doctors
+                .Include(d => d.User)
+                .FirstOrDefaultAsync(d => d.UserId == userId);
+        }
+
         public async Task AddDoctorAsync(Doctor doctor)
         {
             await _context.Doctors.AddAsync(doctor);

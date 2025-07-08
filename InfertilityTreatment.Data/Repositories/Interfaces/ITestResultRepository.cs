@@ -15,5 +15,7 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         
         // Additional methods for phase management
         Task<List<TestResult>> GetByCycleIdAsync(int cycleId);
+        Task<bool> IsTestCompletedAsync(int cycleId, int testId);
+        Task<List<TestResult>> GetTestResultsByIdsAsync(int cycleId, List<int> testIds);
     }
 }

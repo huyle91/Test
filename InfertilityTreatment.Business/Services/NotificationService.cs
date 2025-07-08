@@ -3,6 +3,7 @@ using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Notifications;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.Enums;
+using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -16,16 +17,21 @@ namespace InfertilityTreatment.Business.Services
         private readonly INotificationRepository _notificationRepository;
         private readonly IEmailService _emailService;
         private readonly IBaseRepository<User> _userRepository;
-
+        private readonly IRealTimeNotificationService _realTimeService;
+        private readonly ILogger<NotificationService> _logger;
 
         public NotificationService(
             INotificationRepository notificationRepository,
             IEmailService emailService,
-            IBaseRepository<User> userRepository)
+            IBaseRepository<User> userRepository,
+            IRealTimeNotificationService realTimeService,
+            ILogger<NotificationService> logger)
         {
             _notificationRepository = notificationRepository;
             _emailService = emailService;
             _userRepository = userRepository;
+            _realTimeService = realTimeService;
+            _logger = logger;
         }
         public async Task<bool> CreateNotificationAsync(CreateNotificationDto createDto)
         {
@@ -48,30 +54,70 @@ namespace InfertilityTreatment.Business.Services
 
             if (saved > 0)
             {
-                var user = await _userRepository.GetByIdAsync(createDto.UserId);
-                if (user != null && !string.IsNullOrEmpty(user.Email))
+                try
                 {
-                    if (createDto.Type == NotificationType.Appointment.ToString() ||
-                        createDto.Type == NotificationType.General.ToString() ||
-                        createDto.Type == NotificationType.Result.ToString())
+                    // Create notification response DTO for real-time sending
+                    var notificationDto = new NotificationResponseDto
                     {
-                        var emailSubject = $"[Thông báo] {createDto.Title}";
-                        var emailBody = $"Kính gửi {user.FullName},<br><br>{createDto.Message}<br><br>Trân trọng,<br>Trung tâm Hiếm muộn.";
-                        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody);
-                        notification.SentAt = DateTime.UtcNow;
-                        await _notificationRepository.UpdateAsync(notification);
-                        await _notificationRepository.SaveChangesAsync();
+                        Id = notification.Id,
+                        UserId = notification.UserId,
+                        Title = notification.Title,
+                        Message = notification.Message,
+                        Type = notification.Type,
+                        IsRead = notification.IsRead,
+                        CreatedAt = notification.CreatedAt,
+                        RelatedEntityId = notification.RelatedEntityId,
+                        RelatedEntityType = notification.RelatedEntityType,
+                        ScheduledAt = notification.ScheduledAt,
+                        SentAt = notification.SentAt
+                    };
+
+                    // Send real-time notification directly to user
+                    var realTimeSent = await _realTimeService.SendNotificationToUserAsync(createDto.UserId, notificationDto);
+                    
+                    if (realTimeSent)
+                    {
+                        _logger.LogInformation("Sent real-time notification {NotificationId} to user {UserId}", 
+                            notification.Id, createDto.UserId);
                     }
-                    else if (createDto.Type == NotificationType.Reminder.ToString() && createDto.ScheduledAt.HasValue && createDto.ScheduledAt.Value <= DateTime.UtcNow.AddMinutes(5))
+                    else
                     {
-                        var emailSubject = $"[Nhắc nhở] {createDto.Title}";
-                        var emailBody = $"Kính gửi {user.FullName},<br><br>{createDto.Message}<br><br>Trân trọng,<br>Trung tâm Hiếm muộn.";
-                        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody);
-                        notification.SentAt = DateTime.UtcNow;
-                        await _notificationRepository.UpdateAsync(notification);
-                        await _notificationRepository.SaveChangesAsync();
+                        _logger.LogWarning("Failed to send real-time notification {NotificationId} to user {UserId}", 
+                            notification.Id, createDto.UserId);
                     }
                 }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to send real-time notification {NotificationId} to user {UserId}", 
+                        notification.Id, createDto.UserId);
+                    // Continue with email sending even if real-time fails
+                }
+
+                // Existing email logic...
+                //var user = await _userRepository.GetByIdAsync(createDto.UserId);
+                //if (user != null && !string.IsNullOrEmpty(user.Email))
+                //{
+                //    if (createDto.Type == NotificationType.Appointment.ToString() ||
+                //        createDto.Type == NotificationType.General.ToString() ||
+                //        createDto.Type == NotificationType.Result.ToString())
+                //    {
+                //        var emailSubject = $"[Thông báo] {createDto.Title}";
+                //        var emailBody = $"Kính gửi {user.FullName},<br><br>{createDto.Message}<br><br>Trân trọng,<br>Trung tâm Hiếm muộn.";
+                //        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody);
+                //        notification.SentAt = DateTime.UtcNow;
+                //        await _notificationRepository.UpdateAsync(notification);
+                //        await _notificationRepository.SaveChangesAsync();
+                //    }
+                //    else if (createDto.Type == NotificationType.Reminder.ToString() && createDto.ScheduledAt.HasValue && createDto.ScheduledAt.Value <= DateTime.UtcNow.AddMinutes(5))
+                //    {
+                //        var emailSubject = $"[Nhắc nhở] {createDto.Title}";
+                //        var emailBody = $"Kính gửi {user.FullName},<br><br>{createDto.Message}<br><br>Trân trọng,<br>Trung tâm Hiếm muộn.";
+                //        await _emailService.SendEmailAsync(user.Email, emailSubject, emailBody);
+                //        notification.SentAt = DateTime.UtcNow;
+                //        await _notificationRepository.UpdateAsync(notification);
+                //        await _notificationRepository.SaveChangesAsync();
+                //    }
+                //}
                 return true;
             }
             return false;

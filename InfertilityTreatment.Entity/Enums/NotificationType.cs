@@ -1,17 +1,22 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace InfertilityTreatment.Entity.Enums
+﻿namespace InfertilityTreatment.Entity.Enums
 {
     public enum NotificationType : byte
     {
-        Reminder = 1,
-        Appointment = 2,
-        Result = 3,
-        General = 4,
-        Emergency = 5
+        General = 1,
+        Announcement = 2,
+        Emergency = 3,
+        Maintenance = 4,
+        Reminder = 5,
+        Appointment = 6,
+        Result = 7,
+        Alert = 8
+    }
+
+    public enum NotificationPriority : byte
+    {
+        Low = 1,
+        Medium = 2,
+        High = 3,
+        Critical = 4
     }
 }

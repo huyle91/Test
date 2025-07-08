@@ -8,7 +8,11 @@ namespace InfertilityTreatment.Entity.DTOs.Medications
 {
     public class MedicationFilterDto
     {
-        public int PageNumber { get; set; } = 1;
-        public int PageSize { get; set; } = 10;
+        public string? Name { get; set; }
+        public string? ActiveIngredient { get; set; }
+        public string? Manufacturer { get; set; }
+        public bool? IsActive { get; set; }
+        public string? SortBy { get; set; } = "Name";
+        public string? SortDirection { get; set; } = "asc";
     }
 }

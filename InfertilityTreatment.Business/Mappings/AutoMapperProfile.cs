@@ -3,6 +3,9 @@ using InfertilityTreatment.Entity.DTOs.Appointments;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
+using InfertilityTreatment.Entity.DTOs.Medications;
+using InfertilityTreatment.Entity.DTOs.Prescription;
+using InfertilityTreatment.Entity.DTOs.Prescriptions;
 using InfertilityTreatment.Entity.DTOs.Results;
 using InfertilityTreatment.Entity.DTOs.Review;
 using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
@@ -99,6 +102,21 @@ namespace InfertilityTreatment.Business.Mappings
             // Review
             CreateMap<Review, ReviewDto>().ReverseMap();
             CreateMap<CreateReviewDto, Review>();
+
+            // Medication
+            CreateMap<Medication, MedicationDetailDto>().ReverseMap();
+            CreateMap<CreateMedicationDto, Medication>();
+            CreateMap<UpdateMedicationDto, Medication>();
+
+            // Prescription
+            CreateMap<Prescription, PrescriptionDetailDto>()
+                .ForMember(dest => dest.MedicationName, opt => opt.MapFrom(src => src.Medication.Name))
+                .ForMember(dest => dest.PhaseName, opt => opt.MapFrom(src => src.TreatmentPhase.PhaseName));
+            CreateMap<CreatePrescriptionDto, Prescription>();
+            CreateMap<UpdatePrescriptionDto, Prescription>();
+            CreateMap<Prescription, PrescriptionSummaryDto>()
+                .ForMember(dest => dest.MedicationName, opt => opt.MapFrom(src => src.Medication.Name))
+                .ForMember(dest => dest.PhaseName, opt => opt.MapFrom(src => src.TreatmentPhase.PhaseName));
         }
     }
 }

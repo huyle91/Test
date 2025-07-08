@@ -22,15 +22,31 @@ namespace InfertilityTreatment.Business.Services
         private readonly ITreatmentCycleRepository _treatmentCycleRepository;
         private readonly ITreatmentPhaseRepository _treatmentPhaseRepository;
         private readonly IDoctorRepository _doctorRepository;
+        private readonly ITestResultRepository _testResultRepository;
+        private readonly IDoctorScheduleRepository _doctorScheduleRepository;
+        private readonly IAppointmentRepository _appointmentRepository;
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ILogger<CycleService> _logger;
-        public CycleService(ITreatmentCycleRepository treatmentCycleRepository, IMapper mapper, ITreatmentPhaseRepository treatmentPhaseRepository, IDoctorRepository doctorRepository, ILogger<CycleService> logger, IUnitOfWork unitOfWork)
+        
+        public CycleService(
+            ITreatmentCycleRepository treatmentCycleRepository, 
+            IMapper mapper, 
+            ITreatmentPhaseRepository treatmentPhaseRepository, 
+            IDoctorRepository doctorRepository, 
+            ITestResultRepository testResultRepository,
+            IDoctorScheduleRepository doctorScheduleRepository,
+            IAppointmentRepository appointmentRepository,
+            ILogger<CycleService> logger, 
+            IUnitOfWork unitOfWork)
         {
             _treatmentCycleRepository = treatmentCycleRepository;
             _mapper = mapper;
             _treatmentPhaseRepository = treatmentPhaseRepository;
             _doctorRepository = doctorRepository;
+            _testResultRepository = testResultRepository;
+            _doctorScheduleRepository = doctorScheduleRepository;
+            _appointmentRepository = appointmentRepository;
             _logger = logger;
             _unitOfWork = unitOfWork;
         }
@@ -459,6 +475,65 @@ namespace InfertilityTreatment.Business.Services
             return progressDto;
         }
 
+        private double CalculateInProgressPercentage(TreatmentPhase phase, List<Appointment> appointments, List<TestResult> testResults)
+        {
+            if (appointments.Count == 0 && testResults.Count == 0)
+                return 50; // Default 50% if no data available
+
+            var completedAppointments = appointments.Count(a => a.Status == AppointmentStatus.Completed);
+            var completedTests = testResults.Count(t => t.Status == TestResultStatus.Completed);
+            var totalItems = appointments.Count + testResults.Count;
+
+            if (totalItems == 0)
+                return 50;
+
+            return Math.Round(((double)(completedAppointments + completedTests) / totalItems) * 100, 2);
+        }
+
+        private (List<string> completed, List<string> pending, string current) GeneratePhaseMilestones(
+            TreatmentPhase phase, List<Appointment> appointments, List<TestResult> testResults)
+        {
+            var completed = new List<string>();
+            var pending = new List<string>();
+            var current = "Phase initiated";
+
+            // Generate milestones based on phase name
+            switch (phase.PhaseName.ToLower())
+            {
+                case "ovarian stimulation":
+                    completed.Add("Baseline assessment completed");
+                    if (appointments.Any(a => a.Status == AppointmentStatus.Completed))
+                        completed.Add("Monitoring appointments started");
+                    
+                    current = "Ovarian stimulation in progress";
+                    pending.Add("Complete stimulation protocol");
+                    pending.Add("Final trigger injection");
+                    break;
+
+                case "egg retrieval":
+                    completed.Add("Pre-procedure preparation");
+                    current = "Egg retrieval procedure";
+                    pending.Add("Post-procedure recovery");
+                    pending.Add("Embryology report");
+                    break;
+
+                case "embryo transfer":
+                    completed.Add("Embryo selection");
+                    current = "Embryo transfer procedure";
+                    pending.Add("Post-transfer care");
+                    pending.Add("Pregnancy test");
+                    break;
+
+                default:
+                    completed.Add("Phase started");
+                    current = $"{phase.PhaseName} in progress";
+                    pending.Add("Complete phase requirements");
+                    break;
+            }
+
+            return (completed, pending, current);
+        }
+
         public async Task<List<PhaseResponseDto>> GenerateDefaultPhasesAsync(int cycleId, GeneratePhasesDto dto)
         {
             await _unitOfWork.BeginTransactionAsync();
@@ -508,81 +583,243 @@ namespace InfertilityTreatment.Business.Services
 
         #endregion
 
-        #region Private Helper Methods
+        #region Cycle Initialization Workflow Methods
 
-        private double CalculateInProgressPercentage(TreatmentPhase phase, List<Appointment> appointments, List<TestResult> testResults)
+        public async Task<CycleResponseDto> InitializeCycleAsync(int cycleId, InitializeCycleDto dto)
         {
-            if (!phase.StartDate.HasValue)
-                return 0;
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                if (cycle == null)
+                    throw new ArgumentException("Cycle not found");
 
-            var daysSinceStart = (DateTime.UtcNow - phase.StartDate.Value).TotalDays;
-            var estimatedDuration = 14; // Default 14 days per phase
+                if (cycle.Status != CycleStatus.Created)
+                    throw new InvalidOperationException("Only cycles with 'Created' status can be initialized");
 
-            // Base progress on time elapsed
-            var timeProgress = Math.Min(daysSinceStart / estimatedDuration * 50, 50); // Max 50% from time
+                // Update cycle with initialization data
+                cycle.TreatmentPlan = dto.TreatmentPlan;
+                cycle.SpecialInstructions = dto.SpecialInstructions;
+                cycle.EstimatedCompletionDate = dto.EstimatedCompletionDate;
+                cycle.Status = CycleStatus.Initialized;
+                cycle.UpdatedAt = DateTime.UtcNow;
 
-            // Additional progress from appointments and test results
-            var appointmentProgress = appointments.Any() 
-                ? (appointments.Count(a => a.Status == AppointmentStatus.Completed) / (double)appointments.Count) * 25 
-                : 0;
+                await _treatmentCycleRepository.UpdateAsync(cycle);
 
-            var testProgress = testResults.Any() 
-                ? (testResults.Count(t => t.Status == TestResultStatus.Completed) / (double)testResults.Count) * 25 
-                : 0;
+                // Auto-generate default phases based on treatment package
+                if (dto.AutoGeneratePhases && cycle.PackageId > 0)
+                {
+                    var generateDto = new GeneratePhasesDto
+                    {
+                        TreatmentType = dto.TreatmentType ?? TreatmentType.IVF
+                    };
+                    
+                    await GenerateDefaultPhasesForCycle(cycleId, generateDto.TreatmentType);
+                }
 
-            return Math.Min(timeProgress + appointmentProgress + testProgress, 95); // Max 95% for in-progress
+                // Auto-schedule appointments for phases if requested
+                if (dto.AutoScheduleAppointments)
+                {
+                    await AutoScheduleAppointmentsForCycle(cycleId, dto.StartDate);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("Cycle {CycleId} initialized successfully", cycleId);
+                
+                var updatedCycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                return _mapper.Map<CycleResponseDto>(updatedCycle);
+            }
+            catch
+            {
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
         }
 
-        private (List<string> completed, List<string> pending, string current) GeneratePhaseMilestones(
-            TreatmentPhase phase, List<Appointment> appointments, List<TestResult> testResults)
+        public async Task<CycleResponseDto> StartTreatmentAsync(int cycleId, StartTreatmentDto dto)
         {
-            var completed = new List<string>();
-            var pending = new List<string>();
-            var current = "";
+            await _unitOfWork.BeginTransactionAsync();
+            try
+            {
+                var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                if (cycle == null)
+                    throw new ArgumentException("Cycle not found");
 
-            if (phase.Status == PhaseStatus.Pending)
-            {
-                current = "Phase not started";
-                pending.Add("Start phase");
-                pending.Add("Complete initial assessments");
-                pending.Add("Complete phase activities");
-                pending.Add("Phase review and completion");
-            }
-            else if (phase.Status == PhaseStatus.InProgress)
-            {
-                completed.Add("Phase started");
+                if (cycle.Status != CycleStatus.Initialized)
+                    throw new InvalidOperationException("Only initialized cycles can start treatment");
+
+                // Validate required tests are completed if specified
+                if (dto.RequiredTestIds != null && dto.RequiredTestIds.Any())
+                {
+                    await ValidateRequiredTestsCompleted(cycleId, dto.RequiredTestIds);
+                }
+
+                // Update cycle to start treatment
+                cycle.ActualStartDate = dto.ActualStartDate ?? DateTime.UtcNow;
+                cycle.DoctorNotes = dto.DoctorNotes;
+                cycle.Status = CycleStatus.InProgress;
+                cycle.UpdatedAt = DateTime.UtcNow;
+
+                await _treatmentCycleRepository.UpdateAsync(cycle);
+
+                // Start the first phase if it exists
+                var firstPhase = await _treatmentPhaseRepository.GetFirstPhaseForCycleAsync(cycleId);
+                if (firstPhase != null && firstPhase.Status == PhaseStatus.Pending)
+                {
+                    firstPhase.Status = PhaseStatus.InProgress;
+                    firstPhase.ActualStartDate = cycle.ActualStartDate;
+                    firstPhase.UpdatedAt = DateTime.UtcNow;
+                    await _treatmentPhaseRepository.UpdateAsync(firstPhase);
+                }
+
+                await _unitOfWork.SaveChangesAsync();
+                await _unitOfWork.CommitTransactionAsync();
+
+                _logger.LogInformation("Treatment started for cycle {CycleId}", cycleId);
                 
-                if (appointments.Any(a => a.Status == AppointmentStatus.Completed))
-                {
-                    completed.Add("Initial assessments completed");
-                    current = "Ongoing phase activities";
-                }
-                else
-                {
-                    current = "Initial assessments";
-                }
-
-                if (appointments.All(a => a.Status == AppointmentStatus.Completed) && testResults.All(t => t.Status == TestResultStatus.Completed))
-                {
-                    current = "Ready for phase completion";
-                    pending.Add("Phase review and completion");
-                }
-                else
-                {
-                    pending.Add("Complete phase activities");
-                    pending.Add("Phase review and completion");
-                }
+                var updatedCycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+                return _mapper.Map<CycleResponseDto>(updatedCycle);
             }
-            else if (phase.Status == PhaseStatus.Completed)
+            catch
             {
-                completed.Add("Phase started");
-                completed.Add("Initial assessments completed");
-                completed.Add("Phase activities completed");
-                completed.Add("Phase review and completion");
-                current = "Phase completed";
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
+            }
+        }
+
+        public async Task<CycleTimelineDto> GetCycleTimelineAsync(int cycleId)
+        {
+            var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+            if (cycle == null)
+                throw new ArgumentException("Cycle not found");
+
+            var phases = await _treatmentPhaseRepository.GetPhasesByCycleIdAsync(cycleId);
+            var timelineEvents = new List<TimelineEventDto>();
+            var eventIdCounter = 1; // Generate unique IDs for timeline events
+
+            // Add cycle creation event
+            timelineEvents.Add(new TimelineEventDto
+            {
+                Id = eventIdCounter++,
+                EventType = "Cycle Created",
+                Title = "Cycle Created",
+                EventDate = cycle.CreatedAt,
+                Description = "Treatment cycle was created",
+                Status = "Completed",
+                IsCompleted = true
+            });
+
+            // Add cycle initialization event if applicable
+            if (cycle.Status != CycleStatus.Created)
+            {
+                timelineEvents.Add(new TimelineEventDto
+                {
+                    Id = eventIdCounter++,
+                    EventType = "Cycle Initialized",
+                    Title = "Treatment Plan Finalized",
+                    EventDate = cycle.UpdatedAt ?? cycle.CreatedAt,
+                    Description = "Treatment plan was finalized and cycle initialized",
+                    Status = "Completed",
+                    IsCompleted = true
+                });
             }
 
-            return (completed, pending, current);
+            // Add treatment start event if applicable
+            if (cycle.ActualStartDate.HasValue)
+            {
+                timelineEvents.Add(new TimelineEventDto
+                {
+                    Id = eventIdCounter++,
+                    EventType = "Treatment Started",
+                    Title = "Active Treatment Began",
+                    EventDate = cycle.ActualStartDate.Value,
+                    Description = "Active treatment phase has begun",
+                    Status = "Completed",
+                    IsCompleted = true
+                });
+            }
+
+            // Add phase events
+            foreach (var phase in phases.OrderBy(p => p.PhaseOrder))
+            {
+                var phaseStatus = phase.Status switch
+                {
+                    PhaseStatus.Pending => "Pending",
+                    PhaseStatus.InProgress => "In Progress",
+                    PhaseStatus.Completed => "Completed",
+                    PhaseStatus.Cancelled => "Cancelled",
+                    _ => "Unknown"
+                };
+
+                var eventDate = phase.ActualStartDate ?? phase.ScheduledStartDate ?? phase.CreatedAt;
+                var isCompleted = phase.Status == PhaseStatus.Completed;
+                
+                timelineEvents.Add(new TimelineEventDto
+                {
+                    Id = eventIdCounter++,
+                    EventType = $"Phase: {phase.PhaseName}",
+                    Title = phase.PhaseName,
+                    EventDate = eventDate,
+                    Description = phase.Instructions ?? $"{phase.PhaseName} phase",
+                    Status = phaseStatus,
+                    IsCompleted = isCompleted,
+                    PhaseId = phase.Id
+                });
+            }
+
+            // Add completion event if cycle is completed
+            if (cycle.Status == CycleStatus.Completed)
+            {
+                timelineEvents.Add(new TimelineEventDto
+                {
+                    Id = eventIdCounter++,
+                    EventType = "Treatment Completed",
+                    Title = "Treatment Cycle Completed",
+                    EventDate = cycle.UpdatedAt ?? DateTime.UtcNow,
+                    Description = "Treatment cycle has been completed",
+                    Status = "Completed",
+                    IsCompleted = true
+                });
+            }
+
+            // Calculate completion percentage
+            var totalEvents = timelineEvents.Count;
+            var completedEvents = timelineEvents.Count(e => e.IsCompleted);
+            var completionPercentage = totalEvents > 0 ? (int)((double)completedEvents / totalEvents * 100) : 0;
+
+            return new CycleTimelineDto
+            {
+                CycleId = cycleId,
+                CycleName = $"Treatment Cycle #{cycle.Id}",
+                OverallStatus = cycle.Status.ToString(),
+                CreatedDate = cycle.CreatedAt,
+                StartDate = cycle.ActualStartDate,
+                EstimatedCompletionDate = cycle.EstimatedCompletionDate,
+                CompletionPercentage = completionPercentage,
+                TimelineEvents = timelineEvents.OrderBy(e => e.EventDate).ToList()
+            };
+        }
+
+        private async Task GenerateDefaultPhasesForCycle(int cycleId, TreatmentType treatmentType)
+        {
+            var defaultPhases = GetDefaultPhases(cycleId, treatmentType);
+            
+            foreach (var phase in defaultPhases)
+            {
+                await _treatmentPhaseRepository.AddTreatmentPhaseAsync(phase);
+            }
+        }
+
+        private List<TreatmentPhase> GetDefaultPhases(int cycleId, TreatmentType treatmentType)
+        {
+            return treatmentType switch
+            {
+                TreatmentType.IUI => GenerateIUIPhases(cycleId),
+                TreatmentType.IVF => GenerateIVFPhases(cycleId),
+                _ => GenerateIVFPhases(cycleId)
+            };
         }
 
         private List<TreatmentPhase> GenerateIUIPhases(int cycleId)
@@ -590,43 +827,42 @@ namespace InfertilityTreatment.Business.Services
             return new List<TreatmentPhase>
             {
                 new TreatmentPhase
-                {
+                 {
                     CycleId = cycleId,
-                    PhaseName = "Pre-treatment Assessment",
+                    PhaseName = "Initial Consultation",
                     PhaseOrder = 1,
                     Status = PhaseStatus.Pending,
-                    Instructions = "Initial consultation, baseline tests, and treatment planning",
-                    Cost = 500,
+                    Instructions = "Discuss treatment plan and conduct initial assessments",
+                     Cost = 150,
+                },
+                new TreatmentPhase
+                {
+                    CycleId = cycleId,
+                    PhaseName = "Ovulation Monitoring",
+                    PhaseOrder = 2,
+                    Status = PhaseStatus.Pending,
+                    Instructions = "Track ovulation through ultrasound and hormone monitoring",
+                    Cost = 300,
                     CreatedAt = DateTime.UtcNow
                 },
                 new TreatmentPhase
                 {
                     CycleId = cycleId,
-                    PhaseName = "Ovulation Stimulation",
-                    PhaseOrder = 2,
+                    PhaseName = "Insemination",
+                    PhaseOrder = 3,
                     Status = PhaseStatus.Pending,
-                    Instructions = "Medication administration and monitoring follicle development",
+                    Instructions = "Intrauterine insemination procedure",
                     Cost = 800,
                     CreatedAt = DateTime.UtcNow
                 },
                 new TreatmentPhase
                 {
                     CycleId = cycleId,
-                    PhaseName = "Insemination Procedure",
-                    PhaseOrder = 3,
-                    Status = PhaseStatus.Pending,
-                    Instructions = "Sperm preparation and intrauterine insemination",
-                    Cost = 600,
-                    CreatedAt = DateTime.UtcNow
-                },
-                new TreatmentPhase
-                {
-                    CycleId = cycleId,
-                    PhaseName = "Post-Procedure Monitoring",
+                    PhaseName = "Post-IUI Monitoring",
                     PhaseOrder = 4,
                     Status = PhaseStatus.Pending,
-                    Instructions = "Luteal phase support and pregnancy testing",
-                    Cost = 300,
+                    Instructions = "Monitor for pregnancy and provide support",
+                    Cost = 200,
                     CreatedAt = DateTime.UtcNow
                 }
             };
@@ -642,7 +878,7 @@ namespace InfertilityTreatment.Business.Services
                     PhaseName = "Pre-treatment Assessment",
                     PhaseOrder = 1,
                     Status = PhaseStatus.Pending,
-                    Instructions = "Comprehensive evaluation, baseline tests, and treatment planning",
+                    Instructions = "Comprehensive evaluation and baseline tests",
                     Cost = 800,
                     CreatedAt = DateTime.UtcNow
                 },
@@ -700,5 +936,252 @@ namespace InfertilityTreatment.Business.Services
         }
 
         #endregion
+
+        private async Task AutoScheduleAppointmentsForCycle(int cycleId, DateTime startDate)
+        {
+            var phases = await _treatmentPhaseRepository.GetPhasesByCycleIdAsync(cycleId);
+            var cycle = await _treatmentCycleRepository.GetByIdAsync(cycleId);
+            
+            if (cycle == null || !phases.Any() || cycle.DoctorId == 0)
+            {
+                _logger.LogWarning("Cannot auto-schedule appointments: cycle {CycleId} not found, has no phases, or no doctor assigned", cycleId);
+                return;
+            }
+
+            var currentDate = startDate;
+            var successfullyScheduled = 0;
+            
+            foreach (var phase in phases.OrderBy(p => p.PhaseOrder))
+            {
+                try
+                {
+                    // Calculate preferred appointment date for this phase
+                    var preferredDate = CalculateAppointmentDate(phase, currentDate);
+                    
+                    // Try to find available appointment slot within a reasonable window (±3 days)
+                    var appointmentSlot = await FindAvailableAppointmentSlot(cycle.DoctorId, preferredDate, 3);
+                    
+                    if (appointmentSlot != null)
+                    {
+                        // Create the appointment
+                        var appointment = new Appointment
+                        {
+                            CycleId = cycleId,
+                            DoctorId = cycle.DoctorId,
+                            DoctorScheduleId = appointmentSlot.ScheduleId,
+                            AppointmentType = GetAppointmentTypeForPhase(phase.PhaseName),
+                            ScheduledDateTime = appointmentSlot.DateTime,
+                            Notes = $"Auto-scheduled for {phase.PhaseName}",
+                            Status = AppointmentStatus.Scheduled
+                        };
+
+                        await _appointmentRepository.CreateAsync(appointment);
+                        
+                        // Update phase with scheduled start date
+                        phase.ScheduledStartDate = appointmentSlot.DateTime;
+                        await _treatmentPhaseRepository.UpdateAsync(phase);
+                        
+                        successfullyScheduled++;
+                        currentDate = appointmentSlot.DateTime.AddDays(GetPhaseDurationDays(phase.PhaseName));
+                        
+                        _logger.LogInformation(
+                            "Successfully scheduled appointment for Phase {PhaseName} on {Date} for Cycle {CycleId}",
+                            phase.PhaseName, appointmentSlot.DateTime, cycleId);
+                    }
+                    else
+                    {
+                        _logger.LogWarning(
+                            "Could not find available slot for Phase {PhaseName} around {PreferredDate} for Cycle {CycleId}",
+                            phase.PhaseName, preferredDate, cycleId);
+                        
+                        // Still update the phase with preferred date (even if not confirmed)
+                        phase.ScheduledStartDate = preferredDate;
+                        await _treatmentPhaseRepository.UpdateAsync(phase);
+                        
+                        // Move to next phase date anyway
+                        currentDate = preferredDate.AddDays(GetPhaseDurationDays(phase.PhaseName));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, 
+                        "Error scheduling appointment for Phase {PhaseName} in Cycle {CycleId}", 
+                        phase.PhaseName, cycleId);
+                    
+                    // Continue with next phase
+                    currentDate = currentDate.AddDays(GetPhaseDurationDays(phase.PhaseName));
+                }
+            }
+            
+            _logger.LogInformation(
+                "Auto-scheduling completed for Cycle {CycleId}: {Successful}/{Total} appointments scheduled",
+                cycleId, successfullyScheduled, phases.Count());
+        }
+
+        private DateTime CalculateAppointmentDate(TreatmentPhase phase, DateTime baseDate)
+        {
+            // Calculate appointment date based on phase type
+            return phase.PhaseName.ToLower() switch
+            {
+                "pre-treatment assessment" => baseDate.AddDays(1), // Next day
+                "initial consultation" => baseDate.AddDays(1),
+                "ovulation monitoring" => baseDate.AddDays(3), // Give time for preparation
+                "ovarian stimulation" => baseDate.AddDays(7), // Week later
+                "egg retrieval" => baseDate.AddDays(14), // 2 weeks later
+                "insemination" => baseDate.AddDays(14), // For IUI
+                "fertilization & culture" => baseDate.AddDays(15), // Day after retrieval
+                "embryo transfer" => baseDate.AddDays(19), // 5 days after retrieval
+                "post-transfer monitoring" => baseDate.AddDays(21), // 2 days after transfer
+                "post-iui monitoring" => baseDate.AddDays(16), // 2 days after IUI
+                _ => baseDate.AddDays(1)
+            };
+        }
+
+        private int GetPhaseDurationDays(string phaseName)
+        {
+            // Return typical duration for each phase type
+            return phaseName.ToLower() switch
+            {
+                "pre-treatment assessment" => 3,
+                "initial consultation" => 2,
+                "ovulation monitoring" => 7,
+                "ovarian stimulation" => 10,
+                "egg retrieval" => 1,
+                "insemination" => 1,
+                "fertilization & culture" => 5,
+                "embryo transfer" => 1,
+                "post-transfer monitoring" => 14,
+                "post-iui monitoring" => 14,
+                _ => 7 // Default 1 week
+            };
+        }
+
+        private async Task ValidateRequiredTestsCompleted(int cycleId, List<int> requiredTestIds)
+        {
+            // This would require a test result repository
+            // For now, we'll implement basic validation logic
+            
+            var incompletedTests = new List<int>();
+            
+            foreach (var testId in requiredTestIds)
+            {
+                // Check if test result exists and is completed
+                // This is a placeholder - you would need to implement actual test result checking
+                var isTestCompleted = await CheckTestResultCompleted(cycleId, testId);
+                
+                if (!isTestCompleted)
+                {
+                    incompletedTests.Add(testId);
+                }
+            }
+            
+            if (incompletedTests.Any())
+            {
+                var testList = string.Join(", ", incompletedTests);
+                throw new InvalidOperationException(
+                    $"Cannot start treatment. The following required tests are not completed: {testList}. " +
+                    "Please ensure all required tests are completed before starting treatment.");
+            }
+        }
+
+        private async Task<bool> CheckTestResultCompleted(int cycleId, int testId)
+        {
+            try
+            {
+                // Check if the test result exists and is completed for this cycle
+                return await _testResultRepository.IsTestCompletedAsync(cycleId, testId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error checking test result completion for test {TestId} in cycle {CycleId}", testId, cycleId);
+                // If we can't verify the test, assume it's not completed for safety
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Find available appointment slot for doctor within a date window
+        /// </summary>
+        private async Task<AppointmentSlot?> FindAvailableAppointmentSlot(int doctorId, DateTime preferredDate, int windowDays)
+        {
+            for (int dayOffset = 0; dayOffset <= windowDays; dayOffset++)
+            {
+                // Try preferred date, then ±1, ±2, ±3 days
+                var dates = new List<DateTime>();
+                
+                if (dayOffset == 0)
+                {
+                    dates.Add(preferredDate);
+                }
+                else
+                {
+                    dates.Add(preferredDate.AddDays(dayOffset));   // +1, +2, +3
+                    dates.Add(preferredDate.AddDays(-dayOffset));  // -1, -2, -3
+                }
+
+                foreach (var date in dates)
+                {
+                    // Skip weekends if necessary
+                    if (date.DayOfWeek == DayOfWeek.Saturday || date.DayOfWeek == DayOfWeek.Sunday)
+                        continue;
+
+                    // Skip past dates
+                    if (date.Date < DateTime.Now.Date)
+                        continue;
+
+                    // Get doctor's schedule for this date
+                    var schedules = await _doctorScheduleRepository.GetSchedulesByDoctorAndDateAsync(doctorId, date);
+                    
+                    foreach (var schedule in schedules.Where(s => s.IsActive))
+                    {
+                        // Check if this schedule slot is available (no conflicting appointment)
+                        var conflict = await _appointmentRepository.GetByDoctorAndScheduleAsync(
+                            doctorId, date, schedule.Id);
+
+                        if (conflict == null)
+                        {
+                            // Found available slot
+                            return new AppointmentSlot
+                            {
+                                DateTime = new DateTime(date.Year, date.Month, date.Day, 
+                                                      schedule.StartTime.Hours, schedule.StartTime.Minutes, 0),
+                                ScheduleId = schedule.Id
+                            };
+                        }
+                    }
+                }
+            }
+
+            return null; // No available slot found
+        }
+
+        /// <summary>
+        /// Get appropriate appointment type based on phase name
+        /// </summary>
+        private AppointmentType GetAppointmentTypeForPhase(string phaseName)
+        {
+            return phaseName.ToLower() switch
+            {
+                "pre-treatment assessment" => AppointmentType.Consultation,
+                "initial consultation" => AppointmentType.Consultation,
+                "ovulation monitoring" => AppointmentType.PeriodicCheck,
+                "ovarian stimulation" => AppointmentType.Injection,
+                "egg retrieval" => AppointmentType.Consultation, // Use closest available
+                "insemination" => AppointmentType.Consultation,
+                "embryo transfer" => AppointmentType.Consultation,
+                "pregnancy test" => AppointmentType.PeriodicCheck,
+                "follow-up" => AppointmentType.FollowUp,
+                _ => AppointmentType.Consultation
+            };
+        }
+
+        /// <summary>
+        /// Helper class to represent an available appointment slot
+        /// </summary>
+        private class AppointmentSlot
+        {
+            public DateTime DateTime { get; set; }
+            public int ScheduleId { get; set; }
+        }
     }
 }

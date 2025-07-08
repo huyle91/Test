@@ -25,5 +25,7 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<TreatmentPhase?> GetTreatmentPhaseByIdAsync(int phaseId);
         Task<List<TreatmentPhase>> GetPhasesByCycleIdAsync(int cycleId);
         Task<bool> UpdateTreatmentPhaseAsync(TreatmentPhase phase);
+        Task<TreatmentPhase?> GetFirstPhaseForCycleAsync(int cycleId);
+        Task<bool> UpdateAsync(TreatmentPhase phase);
     }
 }

@@ -8,6 +8,7 @@ using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Entity.Constants;
 using InfertilityTreatment.Entity.DTOs.Auth;
+using InfertilityTreatment.API.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
@@ -63,6 +64,8 @@ namespace InfertilityTreatment.API.Extensions
 
             services.AddScoped<INotificationRepository, NotificationRepository>();
             services.AddScoped<INotificationService, NotificationService>();
+            services.AddScoped<INotificationEventService, NotificationEventService>();
+            services.AddScoped<IRealTimeNotificationService, SignalRNotificationService>();
 
             services.AddScoped<IEmailService, EmailService>();
 
@@ -85,7 +88,8 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IDoctorService, DoctorService>();
 
-
+            // SignalR Services for Real-time Notifications
+            //services.AddScoped<ISignalRNotificationService, SignalRNotificationService>();
 
             // Helpers
             services.AddScoped<JwtHelper>();
@@ -101,6 +105,10 @@ namespace InfertilityTreatment.API.Extensions
             services.AddScoped<IValidator<InfertilityTreatment.Entity.DTOs.TreatmentCycles.CreateCycleDto>, CreateCycleDtoValidator>();
             services.AddScoped<IValidator<InfertilityTreatment.Entity.DTOs.TreatmentCycles.InitializeCycleDto>, InitializeCycleDtoValidator>();
             services.AddScoped<IValidator<InfertilityTreatment.Entity.DTOs.TreatmentCycles.StartTreatmentDto>, StartTreatmentDtoValidator>();
+            
+            // Add validators for notification DTOs
+            services.AddScoped<IValidator<InfertilityTreatment.Entity.DTOs.Notifications.BroadcastNotificationDto>, BroadcastNotificationDtoValidator>();
+            services.AddScoped<IValidator<InfertilityTreatment.Entity.DTOs.Notifications.ScheduleNotificationDto>, ScheduleNotificationDtoValidator>();
 
             return services;
         }
@@ -142,6 +150,39 @@ namespace InfertilityTreatment.API.Extensions
                     ValidAudience = jwtSettings["Audience"],
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey!)),
                     ClockSkew = TimeSpan.Zero
+                };
+
+                // Handle SignalR authentication - extract token from query string for SignalR connections
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path = context.HttpContext.Request.Path;
+                        
+                        // Log for debugging
+                        Console.WriteLine($"[JWT] OnMessageReceived - Path: {path}, Token present: {!string.IsNullOrEmpty(accessToken)}");
+                        
+                        // If the request is for SignalR hub and we have an access token
+                        if (!string.IsNullOrEmpty(accessToken) && 
+                            (path.StartsWithSegments("/notificationHub") || path.StartsWithSegments("/hubs")))
+                        {
+                            context.Token = accessToken;
+                            Console.WriteLine($"[JWT] Token set for SignalR connection: {accessToken.ToString().Substring(0, Math.Min(20, accessToken.ToString().Length))}...");
+                        }
+                        
+                        return Task.CompletedTask;
+                    },
+                    OnAuthenticationFailed = context =>
+                    {
+                        Console.WriteLine($"[JWT] Authentication failed: {context.Exception?.Message}");
+                        return Task.CompletedTask;
+                    },
+                    OnTokenValidated = context =>
+                    {
+                        Console.WriteLine($"[JWT] Token validated successfully for user: {context.Principal?.Identity?.Name}");
+                        return Task.CompletedTask;
+                    }
                 };
             });
 

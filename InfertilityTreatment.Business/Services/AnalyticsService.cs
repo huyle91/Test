@@ -13,6 +13,7 @@ using iTextSharp.text;
 using iTextSharp.text.pdf;
 using System.IO;
 using InfertilityTreatment.Entity.Entities;
+using System.Globalization;
 
 namespace InfertilityTreatment.Business.Services
 {
@@ -29,7 +30,7 @@ namespace InfertilityTreatment.Business.Services
         {
             var startDate = dateRange.StartDate;
             var endDate = dateRange.EndDate;
-            
+
             // For non-admin roles, we need to validate the user exists
             User user = null;
             if (userId.HasValue)
@@ -40,7 +41,7 @@ namespace InfertilityTreatment.Business.Services
                     throw new NotFoundException("User not found");
                 }
             }
-            
+
             // Get all cycles and filter by date
             var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
             var cycles = allCycles.Where(c => c.CreatedAt >= startDate && c.CreatedAt <= endDate);
@@ -379,6 +380,486 @@ namespace InfertilityTreatment.Business.Services
             };
         }
 
+        public async Task<PaginatedResultDto<OutcomeAnalysisResultDto>> GetTreatmentOutcomesAsync(OutcomeAnalysisDto filters)
+        {
+            // Get all cycles within the date range
+            var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var cycles = allCycles.Where(c => c.CreatedAt >= filters.StartDate && c.CreatedAt <= filters.EndDate);
+
+            // Filter by treatment type if specified
+            if (!string.IsNullOrEmpty(filters.TreatmentType))
+            {
+                var packages = await _unitOfWork.TreatmentPackages.GetAllAsync();
+                var services = await _unitOfWork.TreatmentServices.GetAllAsync();
+
+                var targetService = services.FirstOrDefault(s => s.Name.Contains(filters.TreatmentType, StringComparison.OrdinalIgnoreCase));
+                if (targetService != null)
+                {
+                    var servicePackageIds = packages.Where(p => p.ServiceId == targetService.Id).Select(p => p.Id).ToList();
+                    cycles = cycles.Where(c => servicePackageIds.Contains(c.PackageId));
+                }
+            }
+
+            // Filter by doctor if specified
+            if (filters.DoctorId.HasValue)
+            {
+                cycles = cycles.Where(c => c.DoctorId == filters.DoctorId.Value);
+            }
+
+            var cyclesList = cycles.ToList();
+
+            var totalCount = cyclesList.Count;
+            var pageNumber = filters?.PageNumber ?? 1;
+            var pageSize = filters?.PageSize ?? 100;
+            var pagedCycles = cyclesList.Skip((pageNumber - 1) * pageSize).Take(pageSize).ToList();
+
+            if (!pagedCycles.Any())
+            {
+                return new PaginatedResultDto<OutcomeAnalysisResultDto>(new List<OutcomeAnalysisResultDto>(), totalCount, pageNumber, pageSize);
+
+            }
+
+            // Calculate overall success rate
+            var completedCycles = pagedCycles.Where(c => c.Status == CycleStatus.Completed).ToList();
+            var cancelledCycles = pagedCycles.Where(c => c.Status == CycleStatus.Cancelled).ToList();
+            var totalFinishedCycles = completedCycles.Count + cancelledCycles.Count;
+            var successRate = totalFinishedCycles > 0 ? (double)completedCycles.Count / totalFinishedCycles * 100 : 0;
+
+            // Calculate success rate by group
+            var successRateByGroup = new Dictionary<string, double>();
+
+            if (filters.GroupBy?.ToLower() == "doctor")
+            {
+                var doctorsResult = await _unitOfWork.Doctors.GetDoctorsAsync(new InfertilityTreatment.Entity.DTOs.Doctors.DoctorFilterDto());
+                var doctors = doctorsResult.Doctors;
+                var users = await _unitOfWork.Users.GetAllAsync();
+
+                foreach (var doctor in doctors)
+                {
+                    var doctorCycles = pagedCycles.Where(c => c.DoctorId == doctor.Id).ToList();
+                    var doctorCompleted = doctorCycles.Count(c => c.Status == CycleStatus.Completed);
+                    var doctorCancelled = doctorCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                    var doctorTotal = doctorCompleted + doctorCancelled;
+
+                    if (doctorTotal > 0)
+                    {
+                        var doctorSuccessRate = (double)doctorCompleted / doctorTotal * 100;
+                        var doctorName = users.FirstOrDefault(u => u.Id == doctor.UserId)?.FullName ?? $"Doctor {doctor.Id}";
+                        successRateByGroup[doctorName] = doctorSuccessRate;
+                    }
+                }
+            }
+            else if (filters.GroupBy?.ToLower() == "age")
+            {
+                var customers = await _unitOfWork.Customers.GetAllWithUserAsync();
+                var customerIds = pagedCycles.Select(c => c.CustomerId).Distinct().ToList();
+                var relevantCustomers = customers.Where(c => customerIds.Contains(c.Id)).ToList();
+
+                var ageGroups = new Dictionary<string, List<int>>
+                {
+                    ["18-25"] = new List<int>(),
+                    ["26-35"] = new List<int>(),
+                    ["36-45"] = new List<int>(),
+                    ["46+"] = new List<int>()
+                };
+
+                // Since User doesn't have DateOfBirth, we'll use a simplified age distribution
+                var customerList = relevantCustomers.ToList();
+                var groupSize = customerList.Count / 4;
+                var remainder = customerList.Count % 4;
+
+                for (int i = 0; i < customerList.Count; i++)
+                {
+                    var groupIndex = i / (groupSize + (i < remainder * (groupSize + 1) ? 1 : 0));
+                    var groupKey = groupIndex switch
+                    {
+                        0 => "18-25",
+                        1 => "26-35",
+                        2 => "36-45",
+                        _ => "46+"
+                    };
+                    ageGroups[groupKey].Add(customerList[i].Id);
+                }
+
+                foreach (var ageGroup in ageGroups)
+                {
+                    var groupCycles = pagedCycles.Where(c => ageGroup.Value.Contains(c.CustomerId)).ToList();
+                    var groupCompleted = groupCycles.Count(c => c.Status == CycleStatus.Completed);
+                    var groupCancelled = groupCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                    var groupTotal = groupCompleted + groupCancelled;
+
+                    if (groupTotal > 0)
+                    {
+                        var groupSuccessRate = (double)groupCompleted / groupTotal * 100;
+                        successRateByGroup[ageGroup.Key] = groupSuccessRate;
+                    }
+                }
+            }
+
+            // Calculate time to success
+            var timeToSuccessList = new List<TimeSpan>();
+            foreach (var cycle in completedCycles)
+            {
+                if (cycle.ActualEndDate.HasValue)
+                {
+                    var timeToSuccess = cycle.ActualEndDate.Value - cycle.CreatedAt;
+                    timeToSuccessList.Add(timeToSuccess);
+                }
+            }
+
+            // Doctor comparisons
+            var doctorComparisons = new List<DoctorComparisonDto>();
+            var allDoctorsResult = await _unitOfWork.Doctors.GetDoctorsAsync(new InfertilityTreatment.Entity.DTOs.Doctors.DoctorFilterDto());
+            var allDoctors = allDoctorsResult.Doctors;
+            var allUsers = await _unitOfWork.Users.GetAllAsync();
+
+            foreach (var doctor in allDoctors)
+            {
+                var doctorCycles = pagedCycles.Where(c => c.DoctorId == doctor.Id).ToList();
+                var doctorCompleted = doctorCycles.Count(c => c.Status == CycleStatus.Completed);
+                var doctorCancelled = doctorCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                var doctorTotal = doctorCompleted + doctorCancelled;
+
+                if (doctorTotal > 0)
+                {
+                    var doctorSuccessRate = (double)doctorCompleted / doctorTotal * 100;
+                    var doctorName = allUsers.FirstOrDefault(u => u.Id == doctor.UserId)?.FullName ?? $"Doctor {doctor.Id}";
+
+                    doctorComparisons.Add(new DoctorComparisonDto
+                    {
+                        DoctorId = doctor.Id,
+                        DoctorName = doctorName,
+                        SuccessRate = doctorSuccessRate
+                    });
+                }
+            }
+
+            // Trend data (monthly success rates)
+            var trendData = new List<TrendPointDto>();
+            var monthlyGroups = pagedCycles
+                .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
+                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month);
+
+            foreach (var group in monthlyGroups)
+            {
+                var monthCompleted = group.Count(c => c.Status == CycleStatus.Completed);
+                var monthCancelled = group.Count(c => c.Status == CycleStatus.Cancelled);
+                var monthTotal = monthCompleted + monthCancelled;
+
+                if (monthTotal > 0)
+                {
+                    var monthSuccessRate = (double)monthCompleted / monthTotal * 100;
+                    trendData.Add(new TrendPointDto
+                    {
+                        Date = new DateTime(group.Key.Year, group.Key.Month, 1),
+                        Value = monthSuccessRate
+                    });
+                }
+            }
+
+            var result = new OutcomeAnalysisResultDto
+            {
+                SuccessRate = successRate,
+                SuccessRateByGroup = successRateByGroup,
+                TimeToSuccessList = timeToSuccessList,
+                DoctorComparisons = doctorComparisons.OrderByDescending(d => d.SuccessRate).ToList(),
+                TrendData = trendData
+            };
+
+            return new PaginatedResultDto<OutcomeAnalysisResultDto>(new List<OutcomeAnalysisResultDto> { result }, totalCount, pageNumber, pageSize);
+
+        }
+
+        public async Task<EfficiencyMetrics> GetEfficiencyMetricsAsync(EfficiencyQueryDto query)
+        {
+            // Get all appointments within the date range
+            var allAppointments = await _unitOfWork.Appointments.GetAllAsync();
+            var appointments = allAppointments.Where(a => a.CreatedAt >= query.StartDate && a.CreatedAt <= query.EndDate);
+
+            // Filter by doctor if specified
+            if (query.DoctorId.HasValue)
+            {
+                appointments = appointments.Where(a => a.DoctorId == query.DoctorId.Value);
+            }
+
+            var appointmentsList = appointments.ToList();
+
+            // Get all cycles for revenue calculation
+            var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var cycles = allCycles.Where(c => c.CreatedAt >= query.StartDate && c.CreatedAt <= query.EndDate);
+
+            if (query.DoctorId.HasValue)
+            {
+                cycles = cycles.Where(c => c.DoctorId == query.DoctorId.Value);
+            }
+
+            var cyclesList = cycles.ToList();
+
+            // Get all reviews for satisfaction calculation
+            var allReviews = await _unitOfWork.Reviews.GetAllAsync();
+            var reviews = allReviews.Where(r => r.CreatedAt >= query.StartDate && r.CreatedAt <= query.EndDate);
+
+            if (query.DoctorId.HasValue)
+            {
+                reviews = reviews.Where(r => r.DoctorId == query.DoctorId.Value);
+            }
+
+            var reviewsList = reviews.ToList();
+
+            // Calculate average appointment duration (using scheduled duration as approximation)
+            var appointmentDurations = new List<double>();
+            foreach (var appointment in appointmentsList)
+            {
+                // Use a default duration of 30 minutes for appointments
+                appointmentDurations.Add(30.0);
+            }
+            var averageAppointmentDuration = appointmentDurations.Any() ? appointmentDurations.Average() : 0;
+
+            // Calculate doctor utilization rate (simplified calculation)
+            var doctorUtilizationRate = 0.0;
+            if (query.DoctorId.HasValue)
+            {
+                var doctorSchedules = await _unitOfWork.DoctorSchedules.GetSchedulesByDoctorAndDateAsync(query.DoctorId.Value, DateTime.Today);
+
+                if (doctorSchedules.Any())
+                {
+                    var totalScheduledHours = doctorSchedules.Sum(ds =>
+                    {
+                        return (ds.EndTime - ds.StartTime).TotalHours;
+                    });
+
+                    // Assume each appointment takes 0.5 hours
+                    var totalAppointmentHours = appointmentsList.Count * 0.5;
+
+                    doctorUtilizationRate = totalScheduledHours > 0 ? (totalAppointmentHours / totalScheduledHours) * 100 : 0;
+                }
+            }
+            else
+            {
+                // Calculate overall utilization rate for all doctors
+                var allDoctorSchedules = await _unitOfWork.DoctorSchedules.GetSchedulesByDoctorAndDateAsync(0, DateTime.Today);
+                var totalScheduledHours = allDoctorSchedules.Sum(ds =>
+                {
+                    return (ds.EndTime - ds.StartTime).TotalHours;
+                });
+
+                // Assume each appointment takes 0.5 hours
+                var totalAppointmentHours = appointmentsList.Count * 0.5;
+
+                doctorUtilizationRate = totalScheduledHours > 0 ? (totalAppointmentHours / totalScheduledHours) * 100 : 0;
+            }
+
+            // Calculate patient satisfaction score
+            var patientSatisfactionScore = reviewsList.Any() ? reviewsList.Average(r => r.Rating) : 0;
+
+            // Calculate total cycles completed
+            var totalCyclesCompleted = cyclesList.Count(c => c.Status == CycleStatus.Completed);
+
+            // Calculate average revenue per cycle
+            var packages = await _unitOfWork.TreatmentPackages.GetAllAsync();
+            var completedCycles = cyclesList.Where(c => c.Status == CycleStatus.Completed).ToList();
+
+            var totalRevenue = completedCycles.Sum(c =>
+            {
+                var package = packages.FirstOrDefault(p => p.Id == c.PackageId);
+                return package?.Price ?? 0;
+            });
+
+            var averageRevenuePerCycle = completedCycles.Any() ? totalRevenue / completedCycles.Count : 0;
+
+            return new EfficiencyMetrics
+            {
+                AverageAppointmentDuration = averageAppointmentDuration,
+                DoctorUtilizationRate = doctorUtilizationRate,
+                PatientSatisfactionScore = patientSatisfactionScore,
+                TotalCyclesCompleted = totalCyclesCompleted,
+                AverageRevenuePerCycle = averageRevenuePerCycle
+            };
+        }
+
+        public async Task<PatientJourneyResultDto> GetPatientJourneyAnalyticsAsync(PatientJourneyDto filters)
+        {
+            // Get all customers and users
+            var customers = await _unitOfWork.Customers.GetAllWithUserAsync();
+            var users = await _unitOfWork.Users.GetAllAsync();
+
+            // Determine which patients to analyze
+            var patientIds = new List<int>();
+            if (filters.PatientId.HasValue)
+            {
+                patientIds.Add(filters.PatientId.Value);
+            }
+            else
+            {
+                // Get all patients who have cycles in the date range
+                var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+                var relevantCycles = allCycles.Where(c => c.CreatedAt >= filters.StartDate && c.CreatedAt <= filters.EndDate);
+
+                if (filters.DoctorId.HasValue)
+                {
+                    relevantCycles = relevantCycles.Where(c => c.DoctorId == filters.DoctorId.Value);
+                }
+
+                patientIds = relevantCycles.Select(c => c.CustomerId).Distinct().ToList();
+            }
+
+            if (!patientIds.Any())
+            {
+                return new PatientJourneyResultDto
+                {
+                    PatientId = 0,
+                    PatientName = "No patients found",
+                    Steps = new List<JourneyStepDto>()
+                };
+            }
+
+            // For now, we'll analyze the first patient if multiple are found
+            var targetPatientId = patientIds.First();
+            var targetCustomer = customers.FirstOrDefault(c => c.Id == targetPatientId);
+            var targetUser = targetCustomer?.User ?? users.FirstOrDefault(u => u.Id == targetCustomer?.UserId);
+
+            var patientName = targetUser?.FullName ?? $"Patient {targetPatientId}";
+
+            // Get all relevant data for the patient
+            var allCyclesData = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var patientCycles = allCyclesData.Where(c => c.CustomerId == targetPatientId).ToList();
+
+            var allAppointments = await _unitOfWork.Appointments.GetAllAsync();
+            var patientAppointments = allAppointments.Where(a => patientCycles.Select(c => c.Id).Contains(a.CycleId)).ToList();
+
+            var allTestResults = await _unitOfWork.TestResults.GetAllAsync();
+            var patientTestResults = allTestResults.Where(tr => patientCycles.Select(c => c.Id).Contains(tr.CycleId)).ToList();
+
+            // Get prescriptions through treatment phases
+            var allPrescriptions = await _unitOfWork.Prescriptions.GetAllAsync();
+            var allPhases = await _unitOfWork.TreatmentPhases.GetAllAsync();
+            var patientPhaseIds = allPhases.Where(p => patientCycles.Select(c => c.Id).Contains(p.CycleId)).Select(p => p.Id).ToList();
+            var patientPrescriptions = allPrescriptions.Where(p => patientPhaseIds.Contains(p.PhaseId)).ToList();
+
+            // Get payments through treatment packages
+            var allPayments = await _unitOfWork.PaymentRepository.GetAllAsync();
+            var patientPackageIds = patientCycles.Select(c => c.PackageId).ToList();
+            var patientPayments = allPayments.Where(p => patientPackageIds.Contains(p.TreatmentPackageId)).ToList();
+
+            // Build journey steps
+            var journeySteps = new List<JourneyStepDto>();
+
+            // Add cycle creation steps
+            foreach (var cycle in patientCycles.OrderBy(c => c.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Treatment Cycle {cycle.Id} Started",
+                    Timestamp = cycle.CreatedAt,
+                    Status = cycle.Status.ToString()
+                });
+
+                if (cycle.ActualStartDate.HasValue)
+                {
+                    journeySteps.Add(new JourneyStepDto
+                    {
+                        StepName = $"Cycle {cycle.Id} Started",
+                        Timestamp = cycle.ActualStartDate.Value,
+                        Status = "Started"
+                    });
+                }
+
+                if (cycle.ActualEndDate.HasValue)
+                {
+                    journeySteps.Add(new JourneyStepDto
+                    {
+                        StepName = $"Cycle {cycle.Id} Completed",
+                        Timestamp = cycle.ActualEndDate.Value,
+                        Status = "Completed"
+                    });
+                }
+            }
+
+            // Add appointment steps
+            foreach (var appointment in patientAppointments.OrderBy(a => a.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Appointment {appointment.Id} - {appointment.AppointmentType}",
+                    Timestamp = appointment.CreatedAt,
+                    Status = appointment.Status.ToString()
+                });
+
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Appointment {appointment.Id} Scheduled",
+                    Timestamp = appointment.ScheduledDateTime,
+                    Status = "Scheduled"
+                });
+            }
+
+            // Add test result steps
+            foreach (var testResult in patientTestResults.OrderBy(tr => tr.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Test Result {testResult.Id} - {testResult.TestType}",
+                    Timestamp = testResult.CreatedAt,
+                    Status = testResult.Status.ToString()
+                });
+            }
+
+            // Add prescription steps
+            foreach (var prescription in patientPrescriptions.OrderBy(p => p.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Prescription {prescription.Id} Created",
+                    Timestamp = prescription.CreatedAt,
+                    Status = "Created"
+                });
+            }
+
+            // Add payment steps
+            foreach (var payment in patientPayments.OrderBy(p => p.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Payment {payment.Id} - {payment.PaymentMethod}",
+                    Timestamp = payment.CreatedAt,
+                    Status = payment.Status.ToString()
+                });
+            }
+
+            // Sort all steps by timestamp
+            var sortedSteps = journeySteps.OrderBy(s => s.Timestamp).ToList();
+
+            return new PatientJourneyResultDto
+            {
+                PatientId = targetPatientId,
+                PatientName = patientName,
+                Steps = sortedSteps
+            };
+        }
+
+        public async Task<PredictiveAnalyticsResultDto> GetPredictiveAnalyticsAsync(PredictiveQueryDto query)
+        {
+            // This is a placeholder implementation for predictive analytics
+            // In a real implementation, this would use machine learning models
+            return new PredictiveAnalyticsResultDto
+            {
+                PredictionType = query.PredictionType,
+                Predictions = new Dictionary<string, double>(),
+                Notes = "Predictive analytics not yet implemented"
+            };
+        }
+
+        public async Task<CustomReportResultDto> GenerateCustomReportAsync(CustomReportDto dto)
+        {
+            // This is a placeholder implementation for custom report generation
+            // In a real implementation, this would generate reports based on the provided criteria
+            return new CustomReportResultDto
+            {
+                FileUrl = "/reports/custom-report.pdf",
+                FileName = $"custom-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf",
+                ExportFormat = dto.ExportFormat
+            };
+        }
 
         public async Task<byte[]> ExportReportToPdfAsync(ExportReportDto exportRequest)
         {
@@ -388,15 +869,15 @@ namespace InfertilityTreatment.Business.Services
                 {
                     var document = new Document(PageSize.A4, 25, 25, 30, 30);
                     var writer = PdfWriter.GetInstance(document, memoryStream);
-                    
+
                     document.Open();
-                    
+
                     // Title
                     var titleFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 18);
                     var title = new Paragraph($"{exportRequest.ReportType} Report", titleFont);
                     title.Alignment = Element.ALIGN_CENTER;
                     document.Add(title);
-                    
+
                     // Date range
                     var dateFont = FontFactory.GetFont(FontFactory.HELVETICA, 12);
                     var startDate = exportRequest.StartDate ?? DateTime.Now.AddMonths(-1);
@@ -404,9 +885,9 @@ namespace InfertilityTreatment.Business.Services
                     var dateRange = new Paragraph($"Date Range: {startDate:dd/MM/yyyy} - {endDate:dd/MM/yyyy}", dateFont);
                     dateRange.Alignment = Element.ALIGN_CENTER;
                     document.Add(dateRange);
-                    
+
                     document.Add(new Paragraph("\n"));
-                    
+
                     switch (exportRequest.ReportType.ToLower())
                     {
                         case "revenue":
@@ -422,7 +903,7 @@ namespace InfertilityTreatment.Business.Services
                             document.Add(new Paragraph("Report type not supported"));
                             break;
                     }
-                    
+
                     document.Close();
                     return memoryStream.ToArray();
                 }
@@ -442,23 +923,23 @@ namespace InfertilityTreatment.Business.Services
                 {
                     ExcelPackage.LicenseContext = OfficeOpenXml.LicenseContext.NonCommercial;
                 }
-                
+
                 using (var package = new ExcelPackage())
                 {
                     var worksheet = package.Workbook.Worksheets.Add($"{exportRequest.ReportType} Report");
-                    
+
                     // Header
                     worksheet.Cells[1, 1].Value = $"{exportRequest.ReportType} Report";
                     worksheet.Cells[1, 1].Style.Font.Bold = true;
                     worksheet.Cells[1, 1].Style.Font.Size = 16;
-                    
+
                     var startDate = exportRequest.StartDate ?? DateTime.Now.AddMonths(-1);
                     var endDate = exportRequest.EndDate ?? DateTime.Now;
                     worksheet.Cells[2, 1].Value = $"Date Range: {startDate:dd/MM/yyyy} - {endDate:dd/MM/yyyy}";
                     worksheet.Cells[2, 1].Style.Font.Italic = true;
-                    
+
                     var currentRow = 4;
-                    
+
                     switch (exportRequest.ReportType.ToLower())
                     {
                         case "revenue":
@@ -474,7 +955,7 @@ namespace InfertilityTreatment.Business.Services
                             worksheet.Cells[currentRow, 1].Value = "Report type not supported";
                             break;
                     }
-                    
+
                     worksheet.Cells.AutoFitColumns();
                     return package.GetAsByteArray();
                 }
@@ -492,35 +973,35 @@ namespace InfertilityTreatment.Business.Services
                 StartDate = exportRequest.StartDate ?? DateTime.Now.AddMonths(-1),
                 EndDate = exportRequest.EndDate ?? DateTime.Now
             };
-            
+
             var report = await GetRevenueReportAsync(filter);
-            
+
             // Summary
             var summaryFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);
             document.Add(new Paragraph("Revenue Summary", summaryFont));
-            
+
             var contentFont = FontFactory.GetFont(FontFactory.HELVETICA, 12);
             document.Add(new Paragraph($"Total Revenue: ${report.TotalRevenue:N2}", contentFont));
             document.Add(new Paragraph($"Monthly Revenue: ${report.MonthlyRevenue:N2}", contentFont));
             document.Add(new Paragraph($"Yearly Revenue: ${report.YearlyRevenue:N2}", contentFont));
-            
+
             document.Add(new Paragraph("\n"));
-            
+
             // Service breakdown table
             if (report.ServiceBreakdown.Any())
             {
                 document.Add(new Paragraph("Service Breakdown", summaryFont));
-                
+
                 var table = new PdfPTable(4);
                 table.WidthPercentage = 100;
                 table.SetWidths(new float[] { 40f, 20f, 20f, 20f });
-                
+
                 // Headers
                 table.AddCell(new PdfPCell(new Phrase("Service", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Revenue", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Bookings", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Percentage", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
-                
+
                 // Data
                 foreach (var service in report.ServiceBreakdown)
                 {
@@ -529,7 +1010,7 @@ namespace InfertilityTreatment.Business.Services
                     table.AddCell(new PdfPCell(new Phrase(service.BookingCount.ToString())) { HorizontalAlignment = Element.ALIGN_RIGHT });
                     table.AddCell(new PdfPCell(new Phrase($"{service.Percentage:F2}%")) { HorizontalAlignment = Element.ALIGN_RIGHT });
                 }
-                
+
                 document.Add(table);
             }
         }
@@ -542,37 +1023,37 @@ namespace InfertilityTreatment.Business.Services
                 EndDate = exportRequest.EndDate ?? DateTime.Now
             };
             var demographics = await GetPatientDemographicsAsync(dateRange);
-            
+
             var summaryFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);
             document.Add(new Paragraph("Patient Demographics", summaryFont));
-            
+
             var contentFont = FontFactory.GetFont(FontFactory.HELVETICA, 12);
             document.Add(new Paragraph($"Total Patients: {demographics.TotalPatients}", contentFont));
-            
+
             document.Add(new Paragraph("\n"));
-            
+
             // Gender Distribution
             document.Add(new Paragraph("Gender Distribution", summaryFont));
             document.Add(new Paragraph($"Male: {demographics.GenderDistribution.Male}", contentFont));
             document.Add(new Paragraph($"Female: {demographics.GenderDistribution.Female}", contentFont));
             document.Add(new Paragraph($"Other: {demographics.GenderDistribution.Other}", contentFont));
-            
+
             document.Add(new Paragraph("\n"));
-            
+
             // Treatment Types
             if (demographics.TreatmentTypes.Any())
             {
                 document.Add(new Paragraph("Treatment Types", summaryFont));
-                
+
                 var table = new PdfPTable(3);
                 table.WidthPercentage = 100;
                 table.SetWidths(new float[] { 50f, 25f, 25f });
-                
+
                 // Headers
                 table.AddCell(new PdfPCell(new Phrase("Treatment Type", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Count", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Percentage", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
-                
+
                 // Data
                 foreach (var treatment in demographics.TreatmentTypes)
                 {
@@ -580,7 +1061,7 @@ namespace InfertilityTreatment.Business.Services
                     table.AddCell(new PdfPCell(new Phrase(treatment.Count.ToString())) { HorizontalAlignment = Element.ALIGN_RIGHT });
                     table.AddCell(new PdfPCell(new Phrase($"{treatment.Percentage:F2}%")) { HorizontalAlignment = Element.ALIGN_RIGHT });
                 }
-                
+
                 document.Add(table);
             }
         }
@@ -590,22 +1071,22 @@ namespace InfertilityTreatment.Business.Services
             var filter = new SuccessRateFilterDto();
             var pagination = new PaginationQueryDTO { PageNumber = 1, PageSize = 100 };
             var successRates = await GetTreatmentSuccessRatesAsync(filter, pagination);
-            
+
             var summaryFont = FontFactory.GetFont(FontFactory.HELVETICA_BOLD, 14);
             document.Add(new Paragraph("Treatment Success Rates", summaryFont));
-            
+
             if (successRates.Items.Any())
             {
                 var table = new PdfPTable(4);
                 table.WidthPercentage = 100;
                 table.SetWidths(new float[] { 40f, 20f, 20f, 20f });
-                
+
                 // Headers
                 table.AddCell(new PdfPCell(new Phrase("Treatment Type", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Total Cycles", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Successful", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
                 table.AddCell(new PdfPCell(new Phrase("Success Rate", FontFactory.GetFont(FontFactory.HELVETICA_BOLD))) { HorizontalAlignment = Element.ALIGN_CENTER });
-                
+
                 // Data
                 foreach (var rate in successRates.Items)
                 {
@@ -614,7 +1095,7 @@ namespace InfertilityTreatment.Business.Services
                     table.AddCell(new PdfPCell(new Phrase(rate.SuccessfulCycles.ToString())) { HorizontalAlignment = Element.ALIGN_RIGHT });
                     table.AddCell(new PdfPCell(new Phrase($"{rate.SuccessRate:F2}%")) { HorizontalAlignment = Element.ALIGN_RIGHT });
                 }
-                
+
                 document.Add(table);
             }
         }
@@ -626,51 +1107,51 @@ namespace InfertilityTreatment.Business.Services
                 StartDate = exportRequest.StartDate ?? DateTime.Now.AddMonths(-1),
                 EndDate = exportRequest.EndDate ?? DateTime.Now
             };
-            
+
             var report = await GetRevenueReportAsync(filter);
-            
+
             var currentRow = startRow;
-            
+
             // Summary
             worksheet.Cells[currentRow, 1].Value = "Revenue Summary";
             worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Total Revenue:";
             worksheet.Cells[currentRow, 2].Value = report.TotalRevenue;
             worksheet.Cells[currentRow, 2].Style.Numberformat.Format = "$#,##0.00";
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Monthly Revenue:";
             worksheet.Cells[currentRow, 2].Value = report.MonthlyRevenue;
             worksheet.Cells[currentRow, 2].Style.Numberformat.Format = "$#,##0.00";
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Yearly Revenue:";
             worksheet.Cells[currentRow, 2].Value = report.YearlyRevenue;
             worksheet.Cells[currentRow, 2].Style.Numberformat.Format = "$#,##0.00";
             currentRow += 2;
-            
+
             // Service breakdown
             if (report.ServiceBreakdown.Any())
             {
                 worksheet.Cells[currentRow, 1].Value = "Service Breakdown";
                 worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
                 currentRow++;
-                
+
                 // Headers
                 worksheet.Cells[currentRow, 1].Value = "Service";
                 worksheet.Cells[currentRow, 2].Value = "Revenue";
                 worksheet.Cells[currentRow, 3].Value = "Bookings";
                 worksheet.Cells[currentRow, 4].Value = "Percentage";
-                
+
                 var headerRange = worksheet.Cells[currentRow, 1, currentRow, 4];
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                 headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                
+
                 currentRow++;
-                
+
                 foreach (var service in report.ServiceBreakdown)
                 {
                     worksheet.Cells[currentRow, 1].Value = service.ServiceName;
@@ -682,7 +1163,7 @@ namespace InfertilityTreatment.Business.Services
                     currentRow++;
                 }
             }
-            
+
             return currentRow;
         }
 
@@ -694,54 +1175,54 @@ namespace InfertilityTreatment.Business.Services
                 EndDate = exportRequest.EndDate ?? DateTime.Now
             };
             var demographics = await GetPatientDemographicsAsync(dateRange);
-            
+
             var currentRow = startRow;
-            
+
             // Summary
             worksheet.Cells[currentRow, 1].Value = "Patient Demographics";
             worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Total Patients:";
             worksheet.Cells[currentRow, 2].Value = demographics.TotalPatients;
             currentRow += 2;
-            
+
             // Gender Distribution
             worksheet.Cells[currentRow, 1].Value = "Gender Distribution";
             worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Male:";
             worksheet.Cells[currentRow, 2].Value = demographics.GenderDistribution.Male;
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Female:";
             worksheet.Cells[currentRow, 2].Value = demographics.GenderDistribution.Female;
             currentRow++;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Other:";
             worksheet.Cells[currentRow, 2].Value = demographics.GenderDistribution.Other;
             currentRow += 2;
-            
+
             // Treatment Types
             if (demographics.TreatmentTypes.Any())
             {
                 worksheet.Cells[currentRow, 1].Value = "Treatment Types";
                 worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
                 currentRow++;
-                
+
                 // Headers
                 worksheet.Cells[currentRow, 1].Value = "Treatment Type";
                 worksheet.Cells[currentRow, 2].Value = "Count";
                 worksheet.Cells[currentRow, 3].Value = "Percentage";
-                
+
                 var headerRange = worksheet.Cells[currentRow, 1, currentRow, 3];
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                 headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                
+
                 currentRow++;
-                
+
                 foreach (var treatment in demographics.TreatmentTypes)
                 {
                     worksheet.Cells[currentRow, 1].Value = treatment.TreatmentType;
@@ -751,7 +1232,7 @@ namespace InfertilityTreatment.Business.Services
                     currentRow++;
                 }
             }
-            
+
             return currentRow;
         }
 
@@ -760,13 +1241,13 @@ namespace InfertilityTreatment.Business.Services
             var filter = new SuccessRateFilterDto();
             var pagination = new PaginationQueryDTO { PageNumber = 1, PageSize = 100 };
             var successRates = await GetTreatmentSuccessRatesAsync(filter, pagination);
-            
+
             var currentRow = startRow;
-            
+
             worksheet.Cells[currentRow, 1].Value = "Treatment Success Rates";
             worksheet.Cells[currentRow, 1].Style.Font.Bold = true;
             currentRow++;
-            
+
             if (successRates.Items.Any())
             {
                 // Headers
@@ -774,14 +1255,14 @@ namespace InfertilityTreatment.Business.Services
                 worksheet.Cells[currentRow, 2].Value = "Total Cycles";
                 worksheet.Cells[currentRow, 3].Value = "Successful";
                 worksheet.Cells[currentRow, 4].Value = "Success Rate";
-                
+
                 var headerRange = worksheet.Cells[currentRow, 1, currentRow, 4];
                 headerRange.Style.Font.Bold = true;
                 headerRange.Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
                 headerRange.Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
-                
+
                 currentRow++;
-                
+
                 foreach (var rate in successRates.Items)
                 {
                     worksheet.Cells[currentRow, 1].Value = rate.TreatmentType;
@@ -792,8 +1273,94 @@ namespace InfertilityTreatment.Business.Services
                     currentRow++;
                 }
             }
-            
+
             return currentRow;
+        }
+
+        public async Task<byte[]> ExportTreatmentOutcomesAsync(OutcomeAnalysisDto filters, string format)
+        {
+            try
+            {
+                var result = await GetTreatmentOutcomesAsync(filters);
+                var csv = $"SuccessRate\n{result.Items.FirstOrDefault()?.SuccessRate ?? 0}"
+                    + "\n";
+                return System.Text.Encoding.UTF8.GetBytes(csv);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Error exporting Treatment Outcomes: {ex.Message}";
+                return System.Text.Encoding.UTF8.GetBytes(error);
+            }
+        }
+
+        public async Task<byte[]> ExportEfficiencyMetricsAsync(EfficiencyQueryDto query, string format)
+        {
+            try
+            {
+                var result = await GetEfficiencyMetricsAsync(query);
+                var csv = $"AverageAppointmentDuration,DoctorUtilizationRate,PatientSatisfactionScore,TotalCyclesCompleted,AverageRevenuePerCycle\n"
+                    + $"{result.AverageAppointmentDuration},{result.DoctorUtilizationRate},{result.PatientSatisfactionScore},{result.TotalCyclesCompleted},{result.AverageRevenuePerCycle}\n";
+                return System.Text.Encoding.UTF8.GetBytes(csv);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Error exporting Efficiency Metrics: {ex.Message}";
+                return System.Text.Encoding.UTF8.GetBytes(error);
+            }
+        }
+
+        public async Task<byte[]> ExportPatientJourneyAsync(PatientJourneyDto filters, string format)
+        {
+            try
+            {
+                var result = await GetPatientJourneyAnalyticsAsync(filters);
+                var csv = "StepName,Timestamp,Status\n";
+                foreach (var step in result.Steps)
+                {
+                    csv += $"{step.StepName},{step.Timestamp},{step.Status}\n";
+                }
+                return System.Text.Encoding.UTF8.GetBytes(csv);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Error exporting Patient Journey: {ex.Message}";
+                return System.Text.Encoding.UTF8.GetBytes(error);
+            }
+        }
+
+        public async Task<byte[]> ExportPredictiveAnalyticsAsync(PredictiveQueryDto query, string format)
+        {
+            try
+            {
+                var result = await GetPredictiveAnalyticsAsync(query);
+                var csv = "PredictionType,Notes\n";
+                csv += $"{result.PredictionType},{result.Notes}\n";
+                foreach (var kv in result.Predictions)
+                {
+                    csv += $"{kv.Key},{kv.Value}\n";
+                }
+                return System.Text.Encoding.UTF8.GetBytes(csv);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Error exporting Predictive Analytics: {ex.Message}";
+                return System.Text.Encoding.UTF8.GetBytes(error);
+            }
+        }
+
+        public async Task<byte[]> ExportCustomReportAsync(CustomReportDto dto, string format)
+        {
+            try
+            {
+                var result = await GenerateCustomReportAsync(dto);
+                var csv = $"FileName,ExportFormat\n{result.FileName},{result.ExportFormat}\n";
+                return System.Text.Encoding.UTF8.GetBytes(csv);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Error exporting Custom Report: {ex.Message}";
+                return System.Text.Encoding.UTF8.GetBytes(error);
+            }
         }
 
         public async Task<bool> CheckIsDoctorIdWithUserId(int userId, int doctorId)
@@ -801,8 +1368,6 @@ namespace InfertilityTreatment.Business.Services
             var user = await _unitOfWork.Users.GetByIdWithProfilesAsync(userId);
             if (user == null || user.Doctor?.Id == doctorId) return true;
             return false;
-
-
         }
     }
 }

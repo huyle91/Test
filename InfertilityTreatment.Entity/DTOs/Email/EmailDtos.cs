@@ -32,6 +32,7 @@ namespace InfertilityTreatment.Entity.DTOs.Email
         [StringLength(200)]
         public string Subject { get; set; } = string.Empty;
 
+
         [Required]
         public string Message { get; set; } = string.Empty;
 

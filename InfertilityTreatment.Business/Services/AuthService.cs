@@ -119,6 +119,7 @@ namespace InfertilityTreatment.Business.Services
                 {
                     try
                     {
+                        // Prepare and send welcome email
                         var welcomeEmailDto = new SendWelcomeEmailDto
                         {
                             Email = user.Email,

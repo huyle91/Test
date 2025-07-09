@@ -96,6 +96,7 @@ namespace InfertilityTreatment.Business.Templates
         }
 
 
+
         public static string AppointmentReminder(AppointmentResponseDto appointment, string customerName, string doctorName)
         {
             var template = $@"

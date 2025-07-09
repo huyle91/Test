@@ -45,6 +45,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
         {
+            
             var fromAddress = new MailAddress(_fromEmail, _fromName);
             var toAddress = new MailAddress(toEmail);
 

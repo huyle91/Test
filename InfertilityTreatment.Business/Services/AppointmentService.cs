@@ -736,6 +736,7 @@ namespace InfertilityTreatment.Business.Services
                         Email = customer.User.Email
                     };
 
+
                     await _emailService.SendAppointmentConfirmationAsync(confirmationDto);
                 }
             }

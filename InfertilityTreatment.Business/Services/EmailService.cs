@@ -43,13 +43,39 @@ namespace InfertilityTreatment.Business.Services
             _enableSsl = _configuration.GetValue<bool>("SmtpSettings:EnableSsl");
         }
 
+        private bool IsValidEmail(string email)
+        {
+            if (string.IsNullOrWhiteSpace(email))
+                return false;
+
+            try
+            {
+                var addr = new MailAddress(email);
+                return addr.Address == email;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public async Task SendEmailAsync(string toEmail, string subject, string htmlMessage)
         {
-            
+            if (!IsValidEmail(toEmail))
+            {
+                _logger.LogWarning("Invalid email address provided: {Email}", toEmail);
+                throw new ArgumentException("Invalid email address", nameof(toEmail));
+            }
+
+            if (string.IsNullOrWhiteSpace(subject))
+            {
+                throw new ArgumentException("Subject cannot be empty", nameof(subject));
+            }
+
             var fromAddress = new MailAddress(_fromEmail, _fromName);
             var toAddress = new MailAddress(toEmail);
 
-            var smtp = new SmtpClient
+            using var smtp = new SmtpClient
             {
                 Host = _smtpHost,
                 Port = _smtpPort,

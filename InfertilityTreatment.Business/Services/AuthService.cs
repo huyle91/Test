@@ -115,7 +115,7 @@ namespace InfertilityTreatment.Business.Services
                 await _unitOfWork.CommitTransactionAsync();
 
                 // Send welcome email for customer registrations
-                if (request.Role.ToString() == UserRole.Customer.ToString())
+                if (request.Role == UserRole.Customer)
                 {
                     try
                     {

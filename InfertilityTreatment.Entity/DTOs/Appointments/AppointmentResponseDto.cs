@@ -10,6 +10,7 @@ namespace InfertilityTreatment.Entity.DTOs.Appointments
     public class AppointmentResponseDto
     {
         public int Id { get; set; }
+        public int CycleId { get; set; }
         public int DoctorId { get; set; }
         public int DoctorScheduleId { get; set; }
         public AppointmentType AppointmentType { get; set; }

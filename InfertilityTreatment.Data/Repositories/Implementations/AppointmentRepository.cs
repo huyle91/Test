@@ -155,6 +155,47 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .OrderBy(a => a.ScheduledDateTime)
                 .ToListAsync();
         }
+
+        // Enhanced methods for availability and conflict checking
+        public async Task<Appointment?> GetByDoctorAndTimeRangeAsync(int doctorId, DateTime startTime, DateTime endTime)
+        {
+            return await _context.Appointments
+                .Where(a => a.DoctorId == doctorId && 
+                           a.IsActive && 
+                           a.Status != AppointmentStatus.Cancelled &&
+                           a.ScheduledDateTime >= startTime && 
+                           a.ScheduledDateTime < endTime)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<List<Appointment>> GetByDoctorAndDateRangeAsync(int doctorId, DateTime startDate, DateTime endDate)
+        {
+            return await _context.Appointments
+                .Include(a => a.TreatmentCycle)
+                .ThenInclude(c => c.Customer)
+                .Where(a => a.DoctorId == doctorId && 
+                           a.IsActive && 
+                           a.Status != AppointmentStatus.Cancelled &&
+                           a.ScheduledDateTime.Date >= startDate.Date && 
+                           a.ScheduledDateTime.Date <= endDate.Date)
+                .OrderBy(a => a.ScheduledDateTime)
+                .ToListAsync();
+        }
+
+        public async Task<List<Appointment>> GetOverlappingAppointmentsAsync(int doctorId, DateTime startTime, DateTime endTime)
+        {
+            return await _context.Appointments
+                .Include(a => a.TreatmentCycle)
+                .ThenInclude(c => c.Customer)
+                .Where(a => a.DoctorId == doctorId && 
+                           a.IsActive && 
+                           a.Status != AppointmentStatus.Cancelled &&
+                           ((a.ScheduledDateTime >= startTime && a.ScheduledDateTime < endTime) ||
+                            (a.ScheduledDateTime.AddHours(1) > startTime && a.ScheduledDateTime.AddHours(1) <= endTime) ||
+                            (a.ScheduledDateTime <= startTime && a.ScheduledDateTime.AddHours(1) >= endTime)))
+                .OrderBy(a => a.ScheduledDateTime)
+                .ToListAsync();
+        }
     }
 
 }

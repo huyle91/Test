@@ -92,6 +92,7 @@ namespace InfertilityTreatment.API.Services
         {
             try
             {
+                
                 var userGroup = $"user_{userId}";
                 await _hubContext.Clients.Group(userGroup).SendAsync("ReceiveNotification", notification);
                 _logger.LogInformation("Sent real-time notification to user {UserId}", userId);

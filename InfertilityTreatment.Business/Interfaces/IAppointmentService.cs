@@ -19,6 +19,11 @@ namespace InfertilityTreatment.Business.Interfaces
         Task<AppointmentResponseDto> CancelAppointmentAsync(int appointmentId);
         Task<PaginatedResultDto<DoctorScheduleDto>> GetDoctorAvailabilityAsync(int doctorId, DateTime date, PaginationQueryDTO pagination);
         Task<AppointmentResponseDto?> GetByIdAsync(int id);
+        Task<AvailabilityResponseDto> CheckAvailabilityAsync(AvailabilityQueryDto query);
+        Task<BulkCreateResultDto> CreateBulkAppointmentsAsync(BulkCreateAppointmentsDto dto);
+        Task<AutoScheduleResultDto> AutoScheduleAppointmentsAsync(AutoScheduleDto dto);
+        Task<List<ConflictDto>> GetScheduleConflictsAsync(ConflictCheckDto query);
+        Task<bool> SendAppointmentReminderAsync(int appointmentId);
     }
 
 }

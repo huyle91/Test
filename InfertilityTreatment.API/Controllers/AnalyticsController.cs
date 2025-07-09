@@ -406,7 +406,7 @@ namespace InfertilityTreatment.API.Controllers
                 }
 
                 var result = await _analyticsService.GetTreatmentOutcomesAsync(filters);
-                return Ok(new ApiResponseDto<OutcomeAnalysisResultDto>
+                return Ok(new ApiResponseDto<PaginatedResultDto<OutcomeAnalysisResultDto>>
                 {
                     Success = true,
                     Message = "Treatment outcomes analytics retrieved successfully",
@@ -606,6 +606,91 @@ namespace InfertilityTreatment.API.Controllers
                     Message = $"An error occurred: {ex.Message}",
                     Data = null
                 });
+            }
+        }
+
+        [HttpGet("treatment-outcomes/export")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> ExportTreatmentOutcomes([FromQuery] OutcomeAnalysisDto filters, [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var fileBytes = await _analyticsService.ExportTreatmentOutcomesAsync(filters, format);
+                var contentType = "text/csv";
+                var fileName = $"treatment-outcomes-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error exporting Treatment Outcomes: {ex.Message}");
+            }
+        }
+
+        [HttpGet("efficiency-metrics/export")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> ExportEfficiencyMetrics([FromQuery] EfficiencyQueryDto query, [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var fileBytes = await _analyticsService.ExportEfficiencyMetricsAsync(query, format);
+                var contentType = "text/csv";
+                var fileName = $"efficiency-metrics-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error exporting Efficiency Metrics: {ex.Message}");
+            }
+        }
+
+        [HttpGet("patient-journey/export")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> ExportPatientJourney([FromQuery] PatientJourneyDto filters, [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var fileBytes = await _analyticsService.ExportPatientJourneyAsync(filters, format);
+                var contentType = "text/csv";
+                var fileName = $"patient-journey-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error exporting Patient Journey: {ex.Message}");
+            }
+        }
+
+        [HttpGet("predictive-analytics/export")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> ExportPredictiveAnalytics([FromQuery] PredictiveQueryDto query, [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var fileBytes = await _analyticsService.ExportPredictiveAnalyticsAsync(query, format);
+                var contentType = "text/csv";
+                var fileName = $"predictive-analytics-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error exporting Predictive Analytics: {ex.Message}");
+            }
+        }
+
+        [HttpPost("custom-report/export")]
+        [Authorize(Roles = "Manager,Admin")]
+        public async Task<IActionResult> ExportCustomReport([FromBody] CustomReportDto dto, [FromQuery] string format = "csv")
+        {
+            try
+            {
+                var fileBytes = await _analyticsService.ExportCustomReportAsync(dto, format);
+                var contentType = "text/csv";
+                var fileName = $"custom-report-{DateTime.Now:yyyyMMdd-HHmmss}.{format}";
+                return File(fileBytes, contentType, fileName);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error exporting Custom Report: {ex.Message}");
             }
         }
     }

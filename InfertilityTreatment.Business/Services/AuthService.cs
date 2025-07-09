@@ -4,6 +4,7 @@ using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Business.Helpers;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Auth;
+using InfertilityTreatment.Entity.DTOs.Email;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
 using InfertilityTreatment.Entity.Enums;
@@ -16,17 +17,20 @@ namespace InfertilityTreatment.Business.Services
         private readonly IMapper _mapper;
         private readonly JwtHelper _jwtHelper;
         private readonly IConfiguration _configuration;
+        private readonly IEmailService _emailService;
 
         public AuthService(
             IUnitOfWork unitOfWork, 
             IMapper mapper, 
             JwtHelper jwtHelper,
-            IConfiguration configuration)
+            IConfiguration configuration,
+            IEmailService emailService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _jwtHelper = jwtHelper;
             _configuration = configuration;
+            _emailService = emailService;
         }
 
         public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
@@ -109,6 +113,26 @@ namespace InfertilityTreatment.Business.Services
 
                 // Commit transaction
                 await _unitOfWork.CommitTransactionAsync();
+
+                // Send welcome email for customer registrations
+                if (request.Role == UserRole.Customer)
+                {
+                    try
+                    {
+                        // Prepare and send welcome email
+                        var welcomeEmailDto = new SendWelcomeEmailDto
+                        {
+                            Email = user.Email,
+                            CustomerName = user.FullName
+                        };
+                        await _emailService.SendWelcomeEmailAsync(welcomeEmailDto);
+                    }
+                    catch (Exception)
+                    {
+                        // Log email error but don't fail registration
+                        // Email failures should not prevent successful registration
+                    }
+                }
 
                 return new RegisterResponseDto
                 {

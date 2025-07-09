@@ -12,5 +12,6 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         Task<User?> ChangePasswordAsync(int userId, string password);
         Task<bool> EmailExistsAsync(string email);
         Task<User?> GetByIdWithProfilesAsync(int id);
+        Task<List<User>> GetUsersByRolesAsync(List<string> roles);
     }
 }

@@ -173,6 +173,114 @@ namespace InfertilityTreatment.API.Controllers
                    ApiResponseDto<string>.CreateError(AppointmentMessages.UnknownError));
             }
         }
+
+        // Enhanced Appointment APIs
+
+        [HttpGet("availability")]
+        [Authorize]
+        public async Task<ActionResult<ApiResponseDto<AvailabilityResponseDto>>> CheckAvailability([FromQuery] AvailabilityQueryDto query)
+        {
+            try
+            {
+                var result = await _appointmentService.CheckAvailabilityAsync(query);
+                return Ok(ApiResponseDto<AvailabilityResponseDto>.CreateSuccess(result, "Availability checked successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while checking availability."));
+            }
+        }
+
+        [HttpPost("bulk-create")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<ActionResult<ApiResponseDto<BulkCreateResultDto>>> CreateBulkAppointments([FromBody] BulkCreateAppointmentsDto dto)
+        {
+            try
+            {
+                var result = await _appointmentService.CreateBulkAppointmentsAsync(dto);
+                return Ok(ApiResponseDto<BulkCreateResultDto>.CreateSuccess(result, 
+                    $"Bulk creation completed. {result.SuccessfullyCreated}/{result.TotalRequested} appointments created."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred during bulk appointment creation."));
+            }
+        }
+
+        [HttpPost("auto-schedule")]
+        [Authorize(Roles = "Doctor")]
+        public async Task<ActionResult<ApiResponseDto<AutoScheduleResultDto>>> AutoScheduleAppointments([FromBody] AutoScheduleDto dto)
+        {
+            try
+            {
+                var result = await _appointmentService.AutoScheduleAppointmentsAsync(dto);
+                return Ok(ApiResponseDto<AutoScheduleResultDto>.CreateSuccess(result,
+                    $"Auto-scheduling completed. {result.SuccessfullyScheduled}/{result.TotalPlanned} appointments scheduled."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred during auto-scheduling."));
+            }
+        }
+
+        [HttpGet("conflicts")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<ActionResult<ApiResponseDto<List<ConflictDto>>>> GetScheduleConflicts([FromQuery] ConflictCheckDto query)
+        {
+            try
+            {
+                var result = await _appointmentService.GetScheduleConflictsAsync(query);
+                return Ok(ApiResponseDto<List<ConflictDto>>.CreateSuccess(result, 
+                    $"Found {result.Count} schedule conflicts."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while checking conflicts."));
+            }
+        }
+
+        [HttpPost("{id}/send-reminder")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<ActionResult<ApiResponseDto<bool>>> SendAppointmentReminder(int id)
+        {
+            try
+            {
+                var result = await _appointmentService.SendAppointmentReminderAsync(id);
+                if (result)
+                {
+                    return Ok(ApiResponseDto<bool>.CreateSuccess(true, "Reminder sent successfully."));
+                }
+                else
+                {
+                    return NotFound(ApiResponseDto<bool>.CreateError("Appointment not found or reminder failed."));
+                }
+            }
+            catch (Exception)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while sending reminder."));
+            }
+        }
     }
 
 

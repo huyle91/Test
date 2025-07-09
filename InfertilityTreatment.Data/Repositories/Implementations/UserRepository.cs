@@ -106,5 +106,12 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             return new PaginatedResultDto<User?>(pagedUsers, totalCount, filter.PageNumber, filter.PageSize);
         }
+
+        public async Task<List<User>> GetUsersByRolesAsync(List<string> roles)
+        {
+            return await _context.Users
+                .Where(u => roles.Contains(u.Role.ToString()))
+                .ToListAsync();
+        }
     }
 }

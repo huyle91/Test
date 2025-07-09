@@ -13,6 +13,7 @@ using iTextSharp.text;
 using iTextSharp.text.pdf;
 using System.IO;
 using InfertilityTreatment.Entity.Entities;
+using System.Globalization;
 
 namespace InfertilityTreatment.Business.Services
 {
@@ -379,6 +380,484 @@ namespace InfertilityTreatment.Business.Services
             };
         }
 
+        public async Task<OutcomeAnalysisResultDto> GetTreatmentOutcomesAsync(OutcomeAnalysisDto filters)
+        {
+            // Get all cycles within the date range
+            var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var cycles = allCycles.Where(c => c.CreatedAt >= filters.StartDate && c.CreatedAt <= filters.EndDate);
+
+            // Filter by treatment type if specified
+            if (!string.IsNullOrEmpty(filters.TreatmentType))
+            {
+                var packages = await _unitOfWork.TreatmentPackages.GetAllAsync();
+                var services = await _unitOfWork.TreatmentServices.GetAllAsync();
+                
+                var targetService = services.FirstOrDefault(s => s.Name.Contains(filters.TreatmentType, StringComparison.OrdinalIgnoreCase));
+                if (targetService != null)
+                {
+                    var servicePackageIds = packages.Where(p => p.ServiceId == targetService.Id).Select(p => p.Id).ToList();
+                    cycles = cycles.Where(c => servicePackageIds.Contains(c.PackageId));
+                }
+            }
+
+            // Filter by doctor if specified
+            if (filters.DoctorId.HasValue)
+            {
+                cycles = cycles.Where(c => c.DoctorId == filters.DoctorId.Value);
+            }
+
+            var cyclesList = cycles.ToList();
+
+            if (!cyclesList.Any())
+            {
+                return new OutcomeAnalysisResultDto
+                {
+                    SuccessRate = 0,
+                    SuccessRateByGroup = new Dictionary<string, double>(),
+                    TimeToSuccessList = new List<TimeSpan>(),
+                    DoctorComparisons = new List<DoctorComparisonDto>(),
+                    TrendData = new List<TrendPointDto>()
+                };
+            }
+
+            // Calculate overall success rate
+            var completedCycles = cyclesList.Where(c => c.Status == CycleStatus.Completed).ToList();
+            var cancelledCycles = cyclesList.Where(c => c.Status == CycleStatus.Cancelled).ToList();
+            var totalFinishedCycles = completedCycles.Count + cancelledCycles.Count;
+            var successRate = totalFinishedCycles > 0 ? (double)completedCycles.Count / totalFinishedCycles * 100 : 0;
+
+            // Calculate success rate by group
+            var successRateByGroup = new Dictionary<string, double>();
+            
+            if (filters.GroupBy?.ToLower() == "doctor")
+            {
+                var doctorsResult = await _unitOfWork.Doctors.GetDoctorsAsync(new InfertilityTreatment.Entity.DTOs.Doctors.DoctorFilterDto());
+                var doctors = doctorsResult.Doctors;
+                var users = await _unitOfWork.Users.GetAllAsync();
+                
+                foreach (var doctor in doctors)
+                {
+                    var doctorCycles = cyclesList.Where(c => c.DoctorId == doctor.Id).ToList();
+                    var doctorCompleted = doctorCycles.Count(c => c.Status == CycleStatus.Completed);
+                    var doctorCancelled = doctorCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                    var doctorTotal = doctorCompleted + doctorCancelled;
+                    
+                    if (doctorTotal > 0)
+                    {
+                        var doctorSuccessRate = (double)doctorCompleted / doctorTotal * 100;
+                        var doctorName = users.FirstOrDefault(u => u.Id == doctor.UserId)?.FullName ?? $"Doctor {doctor.Id}";
+                        successRateByGroup[doctorName] = doctorSuccessRate;
+                    }
+                }
+            }
+            else if (filters.GroupBy?.ToLower() == "age")
+            {
+                var customers = await _unitOfWork.Customers.GetAllWithUserAsync();
+                var customerIds = cyclesList.Select(c => c.CustomerId).Distinct().ToList();
+                var relevantCustomers = customers.Where(c => customerIds.Contains(c.Id)).ToList();
+
+                var ageGroups = new Dictionary<string, List<int>>
+                {
+                    ["18-25"] = new List<int>(),
+                    ["26-35"] = new List<int>(),
+                    ["36-45"] = new List<int>(),
+                    ["46+"] = new List<int>()
+                };
+
+                // Since User doesn't have DateOfBirth, we'll use a simplified age distribution
+                var customerList = relevantCustomers.ToList();
+                var groupSize = customerList.Count / 4;
+                var remainder = customerList.Count % 4;
+                
+                for (int i = 0; i < customerList.Count; i++)
+                {
+                    var groupIndex = i / (groupSize + (i < remainder * (groupSize + 1) ? 1 : 0));
+                    var groupKey = groupIndex switch
+                    {
+                        0 => "18-25",
+                        1 => "26-35", 
+                        2 => "36-45",
+                        _ => "46+"
+                    };
+                    ageGroups[groupKey].Add(customerList[i].Id);
+                }
+
+                foreach (var ageGroup in ageGroups)
+                {
+                    var groupCycles = cyclesList.Where(c => ageGroup.Value.Contains(c.CustomerId)).ToList();
+                    var groupCompleted = groupCycles.Count(c => c.Status == CycleStatus.Completed);
+                    var groupCancelled = groupCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                    var groupTotal = groupCompleted + groupCancelled;
+
+                    if (groupTotal > 0)
+                    {
+                        var groupSuccessRate = (double)groupCompleted / groupTotal * 100;
+                        successRateByGroup[ageGroup.Key] = groupSuccessRate;
+                    }
+                }
+            }
+
+            // Calculate time to success
+            var timeToSuccessList = new List<TimeSpan>();
+            foreach (var cycle in completedCycles)
+            {
+                if (cycle.ActualEndDate.HasValue)
+                {
+                    var timeToSuccess = cycle.ActualEndDate.Value - cycle.CreatedAt;
+                    timeToSuccessList.Add(timeToSuccess);
+                }
+            }
+
+            // Doctor comparisons
+            var doctorComparisons = new List<DoctorComparisonDto>();
+            var allDoctorsResult = await _unitOfWork.Doctors.GetDoctorsAsync(new InfertilityTreatment.Entity.DTOs.Doctors.DoctorFilterDto());
+            var allDoctors = allDoctorsResult.Doctors;
+            var allUsers = await _unitOfWork.Users.GetAllAsync();
+
+            foreach (var doctor in allDoctors)
+            {
+                var doctorCycles = cyclesList.Where(c => c.DoctorId == doctor.Id).ToList();
+                var doctorCompleted = doctorCycles.Count(c => c.Status == CycleStatus.Completed);
+                var doctorCancelled = doctorCycles.Count(c => c.Status == CycleStatus.Cancelled);
+                var doctorTotal = doctorCompleted + doctorCancelled;
+
+                if (doctorTotal > 0)
+                {
+                    var doctorSuccessRate = (double)doctorCompleted / doctorTotal * 100;
+                    var doctorName = allUsers.FirstOrDefault(u => u.Id == doctor.UserId)?.FullName ?? $"Doctor {doctor.Id}";
+
+                    doctorComparisons.Add(new DoctorComparisonDto
+                    {
+                        DoctorId = doctor.Id,
+                        DoctorName = doctorName,
+                        SuccessRate = doctorSuccessRate
+                    });
+                }
+            }
+
+            // Trend data (monthly success rates)
+            var trendData = new List<TrendPointDto>();
+            var monthlyGroups = cyclesList
+                .GroupBy(c => new { c.CreatedAt.Year, c.CreatedAt.Month })
+                .OrderBy(g => g.Key.Year).ThenBy(g => g.Key.Month);
+
+            foreach (var group in monthlyGroups)
+            {
+                var monthCompleted = group.Count(c => c.Status == CycleStatus.Completed);
+                var monthCancelled = group.Count(c => c.Status == CycleStatus.Cancelled);
+                var monthTotal = monthCompleted + monthCancelled;
+
+                if (monthTotal > 0)
+                {
+                    var monthSuccessRate = (double)monthCompleted / monthTotal * 100;
+                    trendData.Add(new TrendPointDto
+                    {
+                        Date = new DateTime(group.Key.Year, group.Key.Month, 1),
+                        Value = monthSuccessRate
+                    });
+                }
+            }
+
+            return new OutcomeAnalysisResultDto
+            {
+                SuccessRate = successRate,
+                SuccessRateByGroup = successRateByGroup,
+                TimeToSuccessList = timeToSuccessList,
+                DoctorComparisons = doctorComparisons.OrderByDescending(d => d.SuccessRate).ToList(),
+                TrendData = trendData
+            };
+        }
+
+        public async Task<EfficiencyMetrics> GetEfficiencyMetricsAsync(EfficiencyQueryDto query)
+        {
+            // Get all appointments within the date range
+            var allAppointments = await _unitOfWork.Appointments.GetAllAsync();
+            var appointments = allAppointments.Where(a => a.CreatedAt >= query.StartDate && a.CreatedAt <= query.EndDate);
+
+            // Filter by doctor if specified
+            if (query.DoctorId.HasValue)
+            {
+                appointments = appointments.Where(a => a.DoctorId == query.DoctorId.Value);
+            }
+
+            var appointmentsList = appointments.ToList();
+
+            // Get all cycles for revenue calculation
+            var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var cycles = allCycles.Where(c => c.CreatedAt >= query.StartDate && c.CreatedAt <= query.EndDate);
+            
+            if (query.DoctorId.HasValue)
+            {
+                cycles = cycles.Where(c => c.DoctorId == query.DoctorId.Value);
+            }
+
+            var cyclesList = cycles.ToList();
+
+            // Get all reviews for satisfaction calculation
+            var allReviews = await _unitOfWork.Reviews.GetAllAsync();
+            var reviews = allReviews.Where(r => r.CreatedAt >= query.StartDate && r.CreatedAt <= query.EndDate);
+            
+            if (query.DoctorId.HasValue)
+            {
+                reviews = reviews.Where(r => r.DoctorId == query.DoctorId.Value);
+            }
+
+            var reviewsList = reviews.ToList();
+
+            // Calculate average appointment duration (using scheduled duration as approximation)
+            var appointmentDurations = new List<double>();
+            foreach (var appointment in appointmentsList)
+            {
+                // Use a default duration of 30 minutes for appointments
+                appointmentDurations.Add(30.0);
+            }
+            var averageAppointmentDuration = appointmentDurations.Any() ? appointmentDurations.Average() : 0;
+
+            // Calculate doctor utilization rate (simplified calculation)
+            var doctorUtilizationRate = 0.0;
+            if (query.DoctorId.HasValue)
+            {
+                var doctorSchedules = await _unitOfWork.DoctorSchedules.GetSchedulesByDoctorAndDateAsync(query.DoctorId.Value, DateTime.Today);
+                
+                if (doctorSchedules.Any())
+                {
+                    var totalScheduledHours = doctorSchedules.Sum(ds => 
+                    {
+                        return (ds.EndTime - ds.StartTime).TotalHours;
+                    });
+
+                    // Assume each appointment takes 0.5 hours
+                    var totalAppointmentHours = appointmentsList.Count * 0.5;
+
+                    doctorUtilizationRate = totalScheduledHours > 0 ? (totalAppointmentHours / totalScheduledHours) * 100 : 0;
+                }
+            }
+            else
+            {
+                // Calculate overall utilization rate for all doctors
+                var allDoctorSchedules = await _unitOfWork.DoctorSchedules.GetSchedulesByDoctorAndDateAsync(0, DateTime.Today);
+                var totalScheduledHours = allDoctorSchedules.Sum(ds => 
+                {
+                    return (ds.EndTime - ds.StartTime).TotalHours;
+                });
+
+                // Assume each appointment takes 0.5 hours
+                var totalAppointmentHours = appointmentsList.Count * 0.5;
+
+                doctorUtilizationRate = totalScheduledHours > 0 ? (totalAppointmentHours / totalScheduledHours) * 100 : 0;
+            }
+
+            // Calculate patient satisfaction score
+            var patientSatisfactionScore = reviewsList.Any() ? reviewsList.Average(r => r.Rating) : 0;
+
+            // Calculate total cycles completed
+            var totalCyclesCompleted = cyclesList.Count(c => c.Status == CycleStatus.Completed);
+
+            // Calculate average revenue per cycle
+            var packages = await _unitOfWork.TreatmentPackages.GetAllAsync();
+            var completedCycles = cyclesList.Where(c => c.Status == CycleStatus.Completed).ToList();
+            
+            var totalRevenue = completedCycles.Sum(c => 
+            {
+                var package = packages.FirstOrDefault(p => p.Id == c.PackageId);
+                return package?.Price ?? 0;
+            });
+
+            var averageRevenuePerCycle = completedCycles.Any() ? totalRevenue / completedCycles.Count : 0;
+
+            return new EfficiencyMetrics
+            {
+                AverageAppointmentDuration = averageAppointmentDuration,
+                DoctorUtilizationRate = doctorUtilizationRate,
+                PatientSatisfactionScore = patientSatisfactionScore,
+                TotalCyclesCompleted = totalCyclesCompleted,
+                AverageRevenuePerCycle = averageRevenuePerCycle
+            };
+        }
+
+        public async Task<PatientJourneyResultDto> GetPatientJourneyAnalyticsAsync(PatientJourneyDto filters)
+        {
+            // Get all customers and users
+            var customers = await _unitOfWork.Customers.GetAllWithUserAsync();
+            var users = await _unitOfWork.Users.GetAllAsync();
+
+            // Determine which patients to analyze
+            var patientIds = new List<int>();
+            if (filters.PatientId.HasValue)
+            {
+                patientIds.Add(filters.PatientId.Value);
+            }
+            else
+            {
+                // Get all patients who have cycles in the date range
+                var allCycles = await _unitOfWork.TreatmentCycles.GetAllAsync();
+                var relevantCycles = allCycles.Where(c => c.CreatedAt >= filters.StartDate && c.CreatedAt <= filters.EndDate);
+                
+                if (filters.DoctorId.HasValue)
+                {
+                    relevantCycles = relevantCycles.Where(c => c.DoctorId == filters.DoctorId.Value);
+                }
+
+                patientIds = relevantCycles.Select(c => c.CustomerId).Distinct().ToList();
+            }
+
+            if (!patientIds.Any())
+            {
+                return new PatientJourneyResultDto
+                {
+                    PatientId = 0,
+                    PatientName = "No patients found",
+                    Steps = new List<JourneyStepDto>()
+                };
+            }
+
+            // For now, we'll analyze the first patient if multiple are found
+            var targetPatientId = patientIds.First();
+            var targetCustomer = customers.FirstOrDefault(c => c.Id == targetPatientId);
+            var targetUser = targetCustomer?.User ?? users.FirstOrDefault(u => u.Id == targetCustomer?.UserId);
+
+            var patientName = targetUser?.FullName ?? $"Patient {targetPatientId}";
+
+            // Get all relevant data for the patient
+            var allCyclesData = await _unitOfWork.TreatmentCycles.GetAllAsync();
+            var patientCycles = allCyclesData.Where(c => c.CustomerId == targetPatientId).ToList();
+
+            var allAppointments = await _unitOfWork.Appointments.GetAllAsync();
+            var patientAppointments = allAppointments.Where(a => patientCycles.Select(c => c.Id).Contains(a.CycleId)).ToList();
+
+            var allTestResults = await _unitOfWork.TestResults.GetAllAsync();
+            var patientTestResults = allTestResults.Where(tr => patientCycles.Select(c => c.Id).Contains(tr.CycleId)).ToList();
+
+            // Get prescriptions through treatment phases
+            var allPrescriptions = await _unitOfWork.Prescriptions.GetAllAsync();
+            var allPhases = await _unitOfWork.TreatmentPhases.GetAllAsync();
+            var patientPhaseIds = allPhases.Where(p => patientCycles.Select(c => c.Id).Contains(p.CycleId)).Select(p => p.Id).ToList();
+            var patientPrescriptions = allPrescriptions.Where(p => patientPhaseIds.Contains(p.PhaseId)).ToList();
+
+            // Get payments through treatment packages
+            var allPayments = await _unitOfWork.PaymentRepository.GetAllAsync();
+            var patientPackageIds = patientCycles.Select(c => c.PackageId).ToList();
+            var patientPayments = allPayments.Where(p => patientPackageIds.Contains(p.TreatmentPackageId)).ToList();
+
+            // Build journey steps
+            var journeySteps = new List<JourneyStepDto>();
+
+            // Add cycle creation steps
+            foreach (var cycle in patientCycles.OrderBy(c => c.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Treatment Cycle {cycle.Id} Started",
+                    Timestamp = cycle.CreatedAt,
+                    Status = cycle.Status.ToString()
+                });
+
+                if (cycle.ActualStartDate.HasValue)
+                {
+                    journeySteps.Add(new JourneyStepDto
+                    {
+                        StepName = $"Cycle {cycle.Id} Started",
+                        Timestamp = cycle.ActualStartDate.Value,
+                        Status = "Started"
+                    });
+                }
+
+                if (cycle.ActualEndDate.HasValue)
+                {
+                    journeySteps.Add(new JourneyStepDto
+                    {
+                        StepName = $"Cycle {cycle.Id} Completed",
+                        Timestamp = cycle.ActualEndDate.Value,
+                        Status = "Completed"
+                    });
+                }
+            }
+
+            // Add appointment steps
+            foreach (var appointment in patientAppointments.OrderBy(a => a.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Appointment {appointment.Id} - {appointment.AppointmentType}",
+                    Timestamp = appointment.CreatedAt,
+                    Status = appointment.Status.ToString()
+                });
+
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Appointment {appointment.Id} Scheduled",
+                    Timestamp = appointment.ScheduledDateTime,
+                    Status = "Scheduled"
+                });
+            }
+
+            // Add test result steps
+            foreach (var testResult in patientTestResults.OrderBy(tr => tr.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Test Result {testResult.Id} - {testResult.TestType}",
+                    Timestamp = testResult.CreatedAt,
+                    Status = testResult.Status.ToString()
+                });
+            }
+
+            // Add prescription steps
+            foreach (var prescription in patientPrescriptions.OrderBy(p => p.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Prescription {prescription.Id} Created",
+                    Timestamp = prescription.CreatedAt,
+                    Status = "Created"
+                });
+            }
+
+            // Add payment steps
+            foreach (var payment in patientPayments.OrderBy(p => p.CreatedAt))
+            {
+                journeySteps.Add(new JourneyStepDto
+                {
+                    StepName = $"Payment {payment.Id} - {payment.PaymentMethod}",
+                    Timestamp = payment.CreatedAt,
+                    Status = payment.Status.ToString()
+                });
+            }
+
+            // Sort all steps by timestamp
+            var sortedSteps = journeySteps.OrderBy(s => s.Timestamp).ToList();
+
+            return new PatientJourneyResultDto
+            {
+                PatientId = targetPatientId,
+                PatientName = patientName,
+                Steps = sortedSteps
+            };
+        }
+
+        public async Task<PredictiveAnalyticsResultDto> GetPredictiveAnalyticsAsync(PredictiveQueryDto query)
+        {
+            // This is a placeholder implementation for predictive analytics
+            // In a real implementation, this would use machine learning models
+            return new PredictiveAnalyticsResultDto
+            {
+                PredictionType = query.PredictionType,
+                Predictions = new Dictionary<string, double>(),
+                Notes = "Predictive analytics not yet implemented"
+            };
+        }
+
+        public async Task<CustomReportResultDto> GenerateCustomReportAsync(CustomReportDto dto)
+        {
+            // This is a placeholder implementation for custom report generation
+            // In a real implementation, this would generate reports based on the provided criteria
+            return new CustomReportResultDto
+            {
+                FileUrl = "/reports/custom-report.pdf",
+                FileName = $"custom-report-{DateTime.Now:yyyyMMdd-HHmmss}.pdf",
+                ExportFormat = dto.ExportFormat
+            };
+        }
 
         public async Task<byte[]> ExportReportToPdfAsync(ExportReportDto exportRequest)
         {
@@ -801,8 +1280,6 @@ namespace InfertilityTreatment.Business.Services
             var user = await _unitOfWork.Users.GetByIdWithProfilesAsync(userId);
             if (user == null || user.Doctor?.Id == doctorId) return true;
             return false;
-
-
         }
     }
 }

@@ -28,5 +28,11 @@ namespace InfertilityTreatment.Business.Interfaces
         Task<byte[]> ExportReportToExcelAsync(ExportReportDto exportRequest);
 
         Task<bool> CheckIsDoctorIdWithUserId(int userId, int doctorId);
+
+        Task<OutcomeAnalysisResultDto> GetTreatmentOutcomesAsync(OutcomeAnalysisDto filters);
+        Task<EfficiencyMetrics> GetEfficiencyMetricsAsync(EfficiencyQueryDto query);
+        Task<PatientJourneyResultDto> GetPatientJourneyAnalyticsAsync(PatientJourneyDto filters);
+        Task<PredictiveAnalyticsResultDto> GetPredictiveAnalyticsAsync(PredictiveQueryDto query);
+        Task<CustomReportResultDto> GenerateCustomReportAsync(CustomReportDto dto);
     }
 }

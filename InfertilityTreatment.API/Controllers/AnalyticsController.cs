@@ -10,6 +10,7 @@ using System;
 using System.Collections.Generic;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -369,6 +370,226 @@ namespace InfertilityTreatment.API.Controllers
                 });
             }
             catch (KeyNotFoundException ex)
+            {
+                return NotFound(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                });
+            }
+        }
+
+        [HttpGet("treatment-outcomes")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> GetTreatmentOutcomes([FromQuery] OutcomeAnalysisDto filters)
+        {
+            try
+            {
+                if (filters == null)
+                {
+                    return BadRequest(new ApiResponseDto<object>
+                    {
+                        Success = false,
+                        Message = "Filters parameter is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _analyticsService.GetTreatmentOutcomesAsync(filters);
+                return Ok(new ApiResponseDto<OutcomeAnalysisResultDto>
+                {
+                    Success = true,
+                    Message = "Treatment outcomes analytics retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                });
+            }
+        }
+
+        [HttpGet("efficiency-metrics")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> GetEfficiencyMetrics([FromQuery] EfficiencyQueryDto query)
+        {
+            try
+            {
+                if (query == null)
+                {
+                    return BadRequest(new ApiResponseDto<object>
+                    {
+                        Success = false,
+                        Message = "Query parameter is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _analyticsService.GetEfficiencyMetricsAsync(query);
+                return Ok(new ApiResponseDto<EfficiencyMetrics>
+                {
+                    Success = true,
+                    Message = "Efficiency metrics retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                });
+            }
+        }
+
+        [HttpGet("patient-journey")]
+        [Authorize(Roles = "Admin,Manager,Doctor")]
+        public async Task<IActionResult> GetPatientJourneyAnalytics([FromQuery] PatientJourneyDto filters)
+        {
+            try
+            {
+                if (filters == null)
+                {
+                    return BadRequest(new ApiResponseDto<object>
+                    {
+                        Success = false,
+                        Message = "Filters parameter is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _analyticsService.GetPatientJourneyAnalyticsAsync(filters);
+                return Ok(new ApiResponseDto<PatientJourneyResultDto>
+                {
+                    Success = true,
+                    Message = "Patient journey analytics retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                });
+            }
+        }
+
+        [HttpGet("predictive-analytics")]
+        [Authorize(Roles = "Admin,Manager")]
+        public async Task<IActionResult> GetPredictiveAnalytics([FromQuery] PredictiveQueryDto query)
+        {
+            try
+            {
+                if (query == null)
+                {
+                    return BadRequest(new ApiResponseDto<object>
+                    {
+                        Success = false,
+                        Message = "Query parameter is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _analyticsService.GetPredictiveAnalyticsAsync(query);
+                return Ok(new ApiResponseDto<PredictiveAnalyticsResultDto>
+                {
+                    Success = true,
+                    Message = "Predictive analytics retrieved successfully",
+                    Data = result
+                });
+            }
+            catch (NotFoundException ex)
+            {
+                return NotFound(new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Data = null
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponseDto<object>
+                {
+                    Success = false,
+                    Message = $"An error occurred: {ex.Message}",
+                    Data = null
+                });
+            }
+        }
+
+        [HttpPost("custom-report")]
+        [Authorize(Roles = "Manager,Admin")]
+        public async Task<IActionResult> GenerateCustomReport([FromBody] CustomReportDto dto)
+        {
+            try
+            {
+                if (dto == null)
+                {
+                    return BadRequest(new ApiResponseDto<object>
+                    {
+                        Success = false,
+                        Message = "Request body is required",
+                        Data = null
+                    });
+                }
+
+                var result = await _analyticsService.GenerateCustomReportAsync(dto);
+                return Ok(new ApiResponseDto<CustomReportResultDto>
+                {
+                    Success = true,
+                    Message = "Custom report generated successfully",
+                    Data = result
+                });
+            }
+            catch (NotFoundException ex)
             {
                 return NotFound(new ApiResponseDto<object>
                 {

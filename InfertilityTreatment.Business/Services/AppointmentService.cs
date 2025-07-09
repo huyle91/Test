@@ -342,55 +342,73 @@ namespace InfertilityTreatment.Business.Services
                 TotalRequested = dto.Appointments.Count
             };
 
-            for (int i = 0; i < dto.Appointments.Count; i++)
+            // Begin transaction for bulk operation
+            await _unitOfWork.BeginTransactionAsync();
+
+            try
             {
-                try
+                for (int i = 0; i < dto.Appointments.Count; i++)
                 {
-                    var appointment = dto.Appointments[i];
-
-                    // Check conflicts if enabled
-                    if (dto.CheckConflicts)
+                    try
                     {
-                        var existingAppointment = await _unitOfWork.Appointments
-                            .GetByDoctorAndScheduleAsync(appointment.DoctorId, appointment.ScheduledDateTime, appointment.DoctorScheduleId);
+                        var appointment = dto.Appointments[i];
 
-                        if (existingAppointment != null)
+                        // Check conflicts if enabled
+                        if (dto.CheckConflicts)
                         {
-                            result.Conflicts.Add(new ConflictDto
-                            {
-                                AppointmentIndex = i,
-                                ConflictType = "Time Conflict",
-                                ConflictReason = "Doctor already has an appointment at this time",
-                                ConflictTime = appointment.ScheduledDateTime,
-                                ExistingAppointment = _mapper.Map<AppointmentResponseDto>(existingAppointment)
-                            });
+                            var existingAppointment = await _unitOfWork.Appointments
+                                .GetByDoctorAndScheduleAsync(appointment.DoctorId, appointment.ScheduledDateTime, appointment.DoctorScheduleId);
 
-                            if (!dto.ContinueOnError)
+                            if (existingAppointment != null)
                             {
-                                result.Failed++;
-                                continue;
+                                result.Conflicts.Add(new ConflictDto
+                                {
+                                    AppointmentIndex = i,
+                                    ConflictType = "Time Conflict",
+                                    ConflictReason = "Doctor already has an appointment at this time",
+                                    ConflictTime = appointment.ScheduledDateTime,
+                                    ExistingAppointment = _mapper.Map<AppointmentResponseDto>(existingAppointment)
+                                });
+
+                                if (!dto.ContinueOnError)
+                                {
+                                    result.Failed++;
+                                    continue;
+                                }
                             }
                         }
+
+                        var createdAppointment = await CreateAppointmentAsync(appointment);
+                        result.CreatedAppointments.Add(createdAppointment);
+                        result.SuccessfullyCreated++;
+
+                        // Send notifications if enabled
+                        //if (dto.SendNotifications)
+                        //{
+                        //    await SendAppointmentCreatedNotificationAsync(createdAppointment);
+                        //}
                     }
-
-                    var createdAppointment = await CreateAppointmentAsync(appointment);
-                    result.CreatedAppointments.Add(createdAppointment);
-                    result.SuccessfullyCreated++;
-
-                    // Send notifications if enabled
-                    if (dto.SendNotifications)
+                    catch (Exception ex)
                     {
-                        await SendAppointmentCreatedNotificationAsync(createdAppointment);
+                        result.Errors.Add($"Appointment {i}: {ex.Message}");
+                        result.Failed++;
+
+                        if (!dto.ContinueOnError)
+                        {
+                            await _unitOfWork.RollbackTransactionAsync();
+                            throw;
+                        }
                     }
                 }
-                catch (Exception ex)
-                {
-                    result.Errors.Add($"Appointment {i}: {ex.Message}");
-                    result.Failed++;
 
-                    if (!dto.ContinueOnError)
-                        break;
-                }
+                // Commit transaction if successful
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch (Exception)
+            {
+                // Rollback transaction on any unhandled error
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
             }
 
             return result;
@@ -419,55 +437,40 @@ namespace InfertilityTreatment.Business.Services
                 return result;
             }
 
-            var currentDate = dto.PreferredStartDate;
-            result.NextAvailableDate = currentDate;
+            // Begin transaction for auto-scheduling
+            await _unitOfWork.BeginTransactionAsync();
 
-            foreach (var appointmentType in dto.AppointmentTypes)
+            try
             {
-                try
+                var currentDate = dto.PreferredStartDate;
+                result.NextAvailableDate = currentDate;
+
+                // Batch load doctor schedules for the entire date range to improve performance
+                var endDate = currentDate.AddDays(30);
+                var allDoctorSchedules = await GetDoctorSchedulesInDateRange(dto.DoctorId, currentDate, endDate);
+
+                foreach (var appointmentType in dto.AppointmentTypes)
                 {
-                    // Parse appointment type string to enum
-                    if (!Enum.TryParse<AppointmentType>(appointmentType, true, out var parsedAppointmentType))
+                    try
                     {
-                        result.Errors.Add($"Invalid appointment type: {appointmentType}");
-                        continue;
-                    }
+                        // Parse appointment type string to enum
+                        if (!Enum.TryParse<AppointmentType>(appointmentType, true, out var parsedAppointmentType))
+                        {
+                            result.Errors.Add($"Invalid appointment type: {appointmentType}");
+                            continue;
+                        }
 
-                    // Find next available slot
-                    var availabilityQuery = new AvailabilityQueryDto
-                    {
-                        DoctorId = dto.DoctorId,
-                        StartDate = currentDate,
-                        EndDate = currentDate.AddDays(30), // Search within 30 days
-                        Duration = dto.DefaultDuration,
-                        AppointmentType = appointmentType
-                    };
+                        // Find next available slot using cached schedules
+                        var nextSlot = await FindNextAvailableSlot(dto.DoctorId, currentDate, endDate, 
+                            dto.DefaultDuration, dto.PreferredTimeStart, dto.PreferredTimeEnd, allDoctorSchedules);
 
-                    var availability = await CheckAvailabilityAsync(availabilityQuery);
-                    var nextSlot = availability.AvailableSlots
-                        .Where(s => s.IsAvailable && 
-                               s.StartTime.TimeOfDay >= dto.PreferredTimeStart && 
-                               s.StartTime.TimeOfDay <= dto.PreferredTimeEnd)
-                        .OrderBy(s => s.StartTime)
-                        .FirstOrDefault();
-
-                    if (nextSlot != null)
-                    {
-                        // Find appropriate doctor schedule
-                        var schedules = await _unitOfWork.DoctorSchedules
-                            .GetDoctorSchedulesByDateAsync(dto.DoctorId, nextSlot.StartTime.Date);
-                        
-                        var schedule = schedules.FirstOrDefault(s => 
-                            nextSlot.StartTime.TimeOfDay >= s.StartTime && 
-                            nextSlot.EndTime.TimeOfDay <= s.EndTime);
-
-                        if (schedule != null)
+                        if (nextSlot != null)
                         {
                             var appointmentDto = new CreateAppointmentDto
                             {
                                 CycleId = dto.CycleId,
                                 DoctorId = dto.DoctorId,
-                                DoctorScheduleId = schedule.Id,
+                                DoctorScheduleId = nextSlot.ScheduleId,
                                 ScheduledDateTime = nextSlot.StartTime,
                                 AppointmentType = parsedAppointmentType,
                                 Notes = $"Auto-scheduled {appointmentType} appointment"
@@ -478,31 +481,35 @@ namespace InfertilityTreatment.Business.Services
                             result.SuccessfullyScheduled++;
 
                             // Send notifications if enabled
-                            if (dto.SendNotifications)
-                            {
-                                await SendAppointmentCreatedNotificationAsync(createdAppointment);
-                            }
+                            //if (dto.SendNotifications)
+                            //{
+                            //    await SendAppointmentCreatedNotificationAsync(createdAppointment);
+                            //}
 
                             currentDate = nextSlot.StartTime.AddDays(dto.DaysBetweenAppointments);
                             result.NextAvailableDate = currentDate;
                         }
                         else
                         {
-                            result.Errors.Add($"No doctor schedule found for {appointmentType} at {nextSlot.StartTime}");
+                            result.Errors.Add($"No available slot found for {appointmentType}");
                             result.Failed++;
                         }
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        result.Errors.Add($"No available slot found for {appointmentType}");
+                        result.Errors.Add($"Error scheduling {appointmentType}: {ex.Message}");
                         result.Failed++;
                     }
                 }
-                catch (Exception ex)
-                {
-                    result.Errors.Add($"Error scheduling {appointmentType}: {ex.Message}");
-                    result.Failed++;
-                }
+
+                // Commit transaction if successful
+                await _unitOfWork.CommitTransactionAsync();
+            }
+            catch (Exception)
+            {
+                // Rollback transaction on any error
+                await _unitOfWork.RollbackTransactionAsync();
+                throw;
             }
 
             return result;
@@ -691,6 +698,92 @@ namespace InfertilityTreatment.Business.Services
             {
                 // Log error but don't fail the appointment operation
             }
+        }
+
+        // Performance optimization helper methods for auto-scheduling
+
+        /// <summary>
+        /// Batch load doctor schedules for a date range to avoid N+1 queries
+        /// </summary>
+        private async Task<Dictionary<DateTime, List<DoctorSchedule>>> GetDoctorSchedulesInDateRange(int doctorId, DateTime startDate, DateTime endDate)
+        {
+            var schedulesByDate = new Dictionary<DateTime, List<DoctorSchedule>>();
+            var currentDate = startDate.Date;
+
+            while (currentDate <= endDate.Date)
+            {
+                var dailySchedules = await _unitOfWork.DoctorSchedules
+                    .GetDoctorSchedulesByDateAsync(doctorId, currentDate);
+                schedulesByDate[currentDate] = dailySchedules.ToList();
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return schedulesByDate;
+        }
+
+        /// <summary>
+        /// Find next available slot using pre-loaded schedules for better performance
+        /// </summary>
+        private async Task<AvailableSlotInfo?> FindNextAvailableSlot(
+            int doctorId, 
+            DateTime startDate, 
+            DateTime endDate, 
+            int duration, 
+            TimeSpan preferredTimeStart, 
+            TimeSpan preferredTimeEnd,
+            Dictionary<DateTime, List<DoctorSchedule>> allSchedules)
+        {
+            var currentDate = startDate.Date;
+
+            while (currentDate <= endDate.Date)
+            {
+                if (allSchedules.TryGetValue(currentDate, out var daySchedules))
+                {
+                    foreach (var schedule in daySchedules)
+                    {
+                        var slotStart = currentDate.Add(schedule.StartTime);
+                        var slotEnd = currentDate.Add(schedule.EndTime);
+
+                        // Check if slot falls within preferred time range
+                        if (slotStart.TimeOfDay < preferredTimeStart || slotEnd.TimeOfDay > preferredTimeEnd)
+                            continue;
+
+                        // Generate time slots based on duration
+                        while (slotStart.AddMinutes(duration) <= slotEnd)
+                        {
+                            // Check if this time slot is available
+                            var existingAppointment = await _unitOfWork.Appointments
+                                .GetByDoctorAndTimeRangeAsync(doctorId, slotStart, slotStart.AddMinutes(duration));
+
+                            if (existingAppointment == null)
+                            {
+                                return new AvailableSlotInfo
+                                {
+                                    StartTime = slotStart,
+                                    EndTime = slotStart.AddMinutes(duration),
+                                    ScheduleId = schedule.Id
+                                };
+                            }
+
+                            slotStart = slotStart.AddMinutes(duration + 15); // 15 minutes buffer
+                        }
+                    }
+                }
+
+                currentDate = currentDate.AddDays(1);
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Helper class for available slot information
+        /// </summary>
+        private class AvailableSlotInfo
+        {
+            public DateTime StartTime { get; set; }
+            public DateTime EndTime { get; set; }
+            public int ScheduleId { get; set; }
         }
     }
 

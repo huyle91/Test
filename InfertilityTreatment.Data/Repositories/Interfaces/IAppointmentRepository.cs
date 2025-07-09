@@ -28,5 +28,10 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         
         // Additional methods for phase management
         Task<List<Appointment>> GetAppointmentsByCycleIdAsync(int cycleId);
+
+        // Enhanced methods for availability and conflict checking
+        Task<Appointment?> GetByDoctorAndTimeRangeAsync(int doctorId, DateTime startTime, DateTime endTime);
+        Task<List<Appointment>> GetByDoctorAndDateRangeAsync(int doctorId, DateTime startDate, DateTime endDate);
+        Task<List<Appointment>> GetOverlappingAppointmentsAsync(int doctorId, DateTime startTime, DateTime endTime);
     }
 }

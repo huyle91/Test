@@ -14,6 +14,7 @@ using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
 using InfertilityTreatment.Entity.DTOs.TreatmentServices;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using InfertilityTreatment.Entity.Enums;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -85,7 +86,10 @@ namespace InfertilityTreatment.Business.Mappings
 
             //Appointment
             CreateMap<Appointment, AppointmentDto>();
-            CreateMap<CreateAppointmentDto, Appointment>();
+            CreateMap<CreateAppointmentDto, Appointment>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => AppointmentStatus.Scheduled))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
             CreateMap<UpdateAppointmentDto, Appointment>();
 
             //DoctorSchedule
@@ -98,6 +102,9 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<TestResult, TestResultDetailDto>();
             CreateMap<CreateTestResultDto, TestResult>();
             CreateMap<UpdateTestResultDto, TestResult>();
+
+            // Appointment mappings
+            CreateMap<Appointment, AppointmentResponseDto>();
 
             // Review
             CreateMap<Review, ReviewDto>().ReverseMap();

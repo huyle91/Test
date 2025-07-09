@@ -6,6 +6,7 @@ using InfertilityTreatment.Entity.Constants;
 using InfertilityTreatment.Entity.DTOs.Appointments;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
+using InfertilityTreatment.Entity.DTOs.Email;
 using InfertilityTreatment.Entity.DTOs.Notifications;
 using InfertilityTreatment.Entity.DTOs.TreatmentPakages;
 using InfertilityTreatment.Entity.Entities;
@@ -25,13 +26,15 @@ namespace InfertilityTreatment.Business.Services
         private readonly IMapper _mapper;
         private readonly INotificationService _notificationService;
         private readonly IRealTimeNotificationService _realTimeNotificationService;
+        private readonly IEmailService _emailService;
 
-        public AppointmentService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService, IRealTimeNotificationService realTimeNotificationService)
+        public AppointmentService(IUnitOfWork unitOfWork, IMapper mapper, INotificationService notificationService, IRealTimeNotificationService realTimeNotificationService, IEmailService emailService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _notificationService = notificationService;
             _realTimeNotificationService = realTimeNotificationService;
+            _emailService = emailService;
         }
 
         public async Task<AppointmentResponseDto> CreateAppointmentAsync(CreateAppointmentDto dto)
@@ -85,6 +88,9 @@ namespace InfertilityTreatment.Business.Services
 
                 // Send notification for appointment creation
                 await SendAppointmentCreatedNotificationAsync(result);
+
+                // Send email confirmation
+                await SendAppointmentEmailConfirmationAsync(result);
 
                 return result;
             
@@ -597,7 +603,20 @@ namespace InfertilityTreatment.Business.Services
                 // Save notification to database
                 await _notificationService.CreateNotificationAsync(reminderDto);
                 
-                
+                // Send email reminder
+                var appointmentDto = new AppointmentResponseDto
+                {
+                    Id = appointment.Id,
+                    CycleId = appointment.CycleId,
+                    DoctorId = appointment.DoctorId,
+                    DoctorScheduleId = appointment.DoctorScheduleId,
+                    AppointmentType = appointment.AppointmentType,
+                    ScheduledDateTime = appointment.ScheduledDateTime,
+                    Status = appointment.Status,
+                    Notes = appointment.Notes,
+                    Results = appointment.Results
+                };
+                await SendAppointmentReminderEmailAsync(appointmentDto);
                 
                 return true;
             }
@@ -697,6 +716,59 @@ namespace InfertilityTreatment.Business.Services
             catch (Exception)
             {
                 // Log error but don't fail the appointment operation
+            }
+        }
+
+        // Helper method for sending appointment email confirmations
+        private async Task SendAppointmentEmailConfirmationAsync(AppointmentResponseDto appointment)
+        {
+            try
+            {
+                // Get cycle with customer information
+                var cycle = await _unitOfWork.TreatmentCycles.GetCycleByIdAsync(appointment.CycleId);
+                var customer = await _unitOfWork.Customers.GetWithUserAsync(cycle.CustomerId);
+
+                if (!string.IsNullOrEmpty(customer.User?.Email))
+                {
+                    var confirmationDto = new SendAppointmentConfirmationDto
+                    {
+                        AppointmentId = appointment.Id,
+                        Email = customer.User.Email
+                    };
+
+                    await _emailService.SendAppointmentConfirmationAsync(confirmationDto);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the appointment creation
+                // Email failures should not prevent appointment operations
+            }
+        }
+
+        // Helper method for sending appointment reminder emails
+        private async Task SendAppointmentReminderEmailAsync(AppointmentResponseDto appointment)
+        {
+            try
+            {
+                // Get cycle with customer information
+                var cycle = await _unitOfWork.TreatmentCycles.GetCycleByIdAsync(appointment.CycleId);
+                var customer = await _unitOfWork.Customers.GetWithUserAsync(cycle.CustomerId);
+
+                if (!string.IsNullOrEmpty(customer.User?.Email))
+                {
+                    var reminderDto = new SendReminderDto
+                    {
+                        AppointmentId = appointment.Id,
+                        Email = customer.User.Email
+                    };
+
+                    await _emailService.SendAppointmentReminderAsync(reminderDto);
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error but don't fail the operation
             }
         }
 

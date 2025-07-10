@@ -15,5 +15,7 @@ namespace InfertilityTreatment.Entity.DTOs.TreatmentPakages
         public decimal Price { get; set; }
         public string? IncludedServices { get; set; }
         public int? DurationWeeks { get; set; }
+
+        public bool IsActive { get; set; }
     }
 }

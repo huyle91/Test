@@ -14,6 +14,8 @@ namespace InfertilityTreatment.Entity.DTOs.TreatmentServices
         public decimal? BasePrice { get; set; }
         public int? EstimatedDuration { get; set; }
         public string? Requirements { get; set; }
+
+        public bool IsActive { get; set; }
     }
 }
 

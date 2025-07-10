@@ -1,4 +1,5 @@
 ﻿using InfertilityTreatment.Entity.Common;
+using InfertilityTreatment.Entity.Enums;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
@@ -16,11 +17,11 @@ namespace InfertilityTreatment.Entity.Entities
         [MaxLength(200)]
         public string PhaseName { get; set; } = string.Empty;
         public int PhaseOrder { get; set; }
-
-        public string Status { get; set; } = string.Empty;
-
+        public PhaseStatus Status { get; set; }
         public DateTime? StartDate { get; set; }
         public DateTime? EndDate { get; set; }
+        public DateTime? ActualStartDate { get; set; }
+        public DateTime? ScheduledStartDate { get; set; }
         [Column(TypeName = "decimal(12,2)")]
         public decimal Cost { get; set; }
         public string? Instructions { get; set; }

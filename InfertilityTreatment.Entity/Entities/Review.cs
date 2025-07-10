@@ -15,13 +15,8 @@ namespace InfertilityTreatment.Entity.Entities
         public int CustomerId { get; set; }
         [Required]
         public int? DoctorId { get; set; }
-        public int? CycleId { get; set; }
-
-        [Range(1, 5)]
+        public int? CycleId { get; set; }        [Range(1, 5)]
         public int Rating { get; set; }
-
-        [MaxLength(50)]
-        public string ReviewType { get; set; } = string.Empty; 
 
         public string Comment { get; set; } = string.Empty;
 

@@ -8,9 +8,12 @@ namespace InfertilityTreatment.Entity.Enums
 {
     public enum CycleStatus : byte
     {
-        Registered = 1,
-        InProgress = 2,
-        Completed = 3,
-        Cancelled = 4
+        Created = 1,
+        Initialized = 2,
+        InProgress = 3,
+        Completed = 4,
+        Cancelled = 5,
+        // Keep legacy status for backward compatibility
+        Registered = 1
     }
 }

@@ -65,7 +65,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error: {ex.Message}");
+                throw new ApplicationException($"Error: {ex.Message}");
             }
         }
 
@@ -89,7 +89,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             }
             catch (Exception ex)
             {
-                throw new Exception($"Error: {ex.Message}");
+                throw new ApplicationException($"Error: {ex.Message}");
             }
         }
 
@@ -105,6 +105,13 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
                 .ToListAsync();
 
             return new PaginatedResultDto<User?>(pagedUsers, totalCount, filter.PageNumber, filter.PageSize);
+        }
+
+        public async Task<List<User>> GetUsersByRolesAsync(List<string> roles)
+        {
+            return await _context.Users
+                .Where(u => roles.Contains(u.Role.ToString()))
+                .ToListAsync();
         }
     }
 }

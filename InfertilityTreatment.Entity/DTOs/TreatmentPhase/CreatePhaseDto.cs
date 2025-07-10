@@ -4,6 +4,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using InfertilityTreatment.Entity.Enums;
 
 namespace InfertilityTreatment.Entity.DTOs.TreatmentPhase
 {
@@ -25,8 +26,9 @@ namespace InfertilityTreatment.Entity.DTOs.TreatmentPhase
         public decimal Cost { get; set; }
 
         [Required(ErrorMessage = "Status is required.")]
-        [MaxLength(50, ErrorMessage = "Status cannot exceed 50 characters.")]
-        public string Status { get; set; } = string.Empty;
+        [EnumDataType(typeof(PhaseStatus))]
+        [Range((int)PhaseStatus.Pending, (int)PhaseStatus.OnHold, ErrorMessage = "Status must be a valid PhaseStatus.")]
+        public PhaseStatus Status { get; set; } 
 
         [DataType(DataType.Date)]
         public DateTime? StartDate { get; set; }

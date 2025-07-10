@@ -1,18 +1,27 @@
+using FluentValidation;
 using InfertilityTreatment.API.Extensions;
 using InfertilityTreatment.API.Middleware;
 using InfertilityTreatment.API.Services;
+using InfertilityTreatment.API.Hubs;
 using InfertilityTreatment.Business.Interfaces;
 using InfertilityTreatment.Business.Services;
+using InfertilityTreatment.Business.Validators;
 using InfertilityTreatment.Data.Context;
 using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
+    }); 
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddValidatorsFromAssemblyContaining<CreateCycleDtoValidator>();
 
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
@@ -32,6 +41,12 @@ builder.Services.AddPaymentGateways(builder.Configuration);
 
 // Add JWT Authentication
 builder.Services.AddJwtAuthentication(builder.Configuration);
+
+// Add SignalR for real-time notifications
+builder.Services.AddSignalR();
+
+// Register SignalR notification service
+builder.Services.AddScoped<SignalRNotificationService>();
 
 // Add Health Checks
 builder.Services.AddHealthChecks()
@@ -76,7 +91,7 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configure CORS for React app
+// Configure CORS for React app and SignalR
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowReactApp", policy =>
@@ -84,7 +99,8 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173", "http://localhost:3000")
               .AllowAnyMethod()
               .AllowAnyHeader()
-              .AllowCredentials();
+              .AllowCredentials() // Required for SignalR
+              .SetIsOriginAllowed(origin => true); // Allow all origins for development
     });
 });
 
@@ -117,6 +133,22 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map SignalR Hub
+app.MapHub<NotificationHub>("/notificationHub");
+
+// Configure event handling for SignalR notifications
+using (var scope = app.Services.CreateScope())
+{
+    var eventService = scope.ServiceProvider.GetRequiredService<INotificationEventService>();
+    var signalRService = scope.ServiceProvider.GetRequiredService<SignalRNotificationService>();
+    
+    // Register SignalR service as event handler
+    if (eventService is NotificationEventService notificationEventService)
+    {
+        notificationEventService.RegisterHandler(signalRService.HandleNotificationEventAsync);
+    }
+}
 
 // Initialize query optimization warmup
 using (var scope = app.Services.CreateScope())

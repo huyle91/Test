@@ -9,6 +9,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
+using FluentValidation;
+using InfertilityTreatment.Data.Repositories.Interfaces;
 
 namespace InfertilityTreatment.API.Controllers
 {
@@ -18,19 +20,52 @@ namespace InfertilityTreatment.API.Controllers
     public class TreatmentCyclesController : ControllerBase
     {
         private readonly ICycleService _cycleService;
-        public TreatmentCyclesController(ICycleService cycleService)
+        private readonly IValidator<CreateCycleDto> _createCycleValidator;
+        private readonly IValidator<InitializeCycleDto> _initializeCycleValidator;
+        private readonly IValidator<StartTreatmentDto> _startTreatmentValidator;
+        private readonly ICustomerRepository _customerRepository;
+        private readonly IDoctorRepository _doctorRepository;
+        
+        public TreatmentCyclesController(
+            ICycleService cycleService, 
+            IValidator<CreateCycleDto> createCycleValidator,
+            IValidator<InitializeCycleDto> initializeCycleValidator,
+            IValidator<StartTreatmentDto> startTreatmentValidator,
+            ICustomerRepository customerRepository,
+            IDoctorRepository doctorRepository)
         {
             _cycleService = cycleService;
+            _createCycleValidator = createCycleValidator;
+            _initializeCycleValidator = initializeCycleValidator;
+            _startTreatmentValidator = startTreatmentValidator;
+            _customerRepository = customerRepository;
+            _doctorRepository = doctorRepository;
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateCycle([FromBody] CreateCycleDto createCycleDto)
         {
-            var cycleResponse = await _cycleService.CreateCycleAsync(createCycleDto);
-            if (cycleResponse == null)
-                return BadRequest("Failed to create treatment cycle. Please verify input data.");
+            var validationResult = await _createCycleValidator.ValidateAsync(createCycleDto);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.ToDictionary());
 
-            return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(cycleResponse, "Treatment cycle created successfully."));
+            try
+            {
+                var cycleResponse = await _cycleService.CreateCycleAsync(createCycleDto);
+                return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(cycleResponse, "Treatment cycle created successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(500, ApiResponseDto<string>.CreateError(ex.Message));
+            }
         }
 
         [HttpGet]
@@ -59,7 +94,7 @@ namespace InfertilityTreatment.API.Controllers
                 return Ok(ApiResponseDto<PaginatedResultDto<CycleResponseDto>>.CreateSuccess(result, "Retrieved cycles by doctor successfully."));
             }
 
-            return BadRequest("Please provide either a valid customerId or doctorId.");
+            return BadRequest("Please provide either a valid customerId and doctorId.");
         }
 
 
@@ -69,18 +104,32 @@ namespace InfertilityTreatment.API.Controllers
             try
             {
                 var cycle = await _cycleService.GetCycleByIdAsync(id);
+                if (cycle == null)
+                {
+                    return NotFound(ApiResponseDto<string>.CreateError("Cycle not found."));
+                }
+
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (cycle.CustomerId != userId && !User.IsInRole("Admin") && cycle.DoctorId != userId)
+                var roleStr = User.FindFirstValue(ClaimTypes.Role);
+                if (!Enum.TryParse<UserRole>(roleStr, out var userRole))
+                    return Forbid();
+
+                // Check authorization based on user role and relationships
+                var hasAccess = await CheckCycleAccessAsync(cycle, userId, userRole);
+                if (!hasAccess)
                 {
                     return Forbid();
                 }
+
                 return Ok(ApiResponseDto<CycleDetailDto>.CreateSuccess(cycle, "Cycle details retrieved successfully."));
             }
             catch (Exception)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("Error retrieving cycle details."));
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("Error retrieving cycle details."));
             }
         }
+
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCycle(int id, [FromBody] UpdateCycleDto updateCycleDto)
@@ -88,11 +137,22 @@ namespace InfertilityTreatment.API.Controllers
             try
             {
                 var cycle = await _cycleService.GetCycleByIdAsync(id);
+                if (cycle == null)
+                {
+                    return NotFound(ApiResponseDto<string>.CreateError("Cycle not found."));
+                }
+
                 var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-                if (cycle.CustomerId != userId && cycle.DoctorId != userId && !User.IsInRole("Admin"))
+                var roleStr = User.FindFirstValue(ClaimTypes.Role);
+                if (!Enum.TryParse<UserRole>(roleStr, out var userRole))
+                    return Forbid();
+
+                var hasAccess = await CheckCycleAccessAsync(cycle, userId, userRole);
+                if (!hasAccess)
                 {
                     return Forbid();
                 }
+
                 var result = await _cycleService.UpdateCycleAsync(id, updateCycleDto);
                 if (result)
                     return Ok(ApiResponseDto<string>.CreateSuccess(null, "Cycle updated successfully."));
@@ -170,16 +230,27 @@ namespace InfertilityTreatment.API.Controllers
         }
 
         [HttpPost("{id}/phases")]
-        public async Task<IActionResult> CreatePhase(int id, CreatePhaseDto createPhaseDto)
+        public async Task<IActionResult> CreatePhase(int id, [FromBody]CreatePhaseDto createPhaseDto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             try
             {
                 var result = await _cycleService.AddPhaseAsync(id, createPhaseDto);
                 return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "New phase added to cycle."));
             }
-            catch (Exception)
+            catch (ArgumentException ex)
             {
-                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<PhaseResponseDto>.CreateError("Error creating new phase."));
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(500, ApiResponseDto<string>.CreateError(ex.Message));
             }
         }
 
@@ -199,5 +270,246 @@ namespace InfertilityTreatment.API.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while updating the phase."));
             }
         }
+
+        #region Phase Management Endpoints BE-022
+
+        /// <summary>
+        /// Start a specific phase in a treatment cycle
+        /// </summary>
+        [HttpPatch("{cycleId}/phases/{phaseId}/start")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> StartPhase(int cycleId, int phaseId, [FromBody] StartPhaseDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.StartPhaseAsync(cycleId, phaseId, dto);
+                return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "Treatment Phase started successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while starting the phase."));
+            }
+        }
+
+        /// <summary>
+        /// Complete a specific phase in a treatment cycle
+        /// </summary>
+        [HttpPatch("{cycleId}/phases/{phaseId}/complete")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> CompletePhase(int cycleId, int phaseId, [FromBody] CompletePhaseDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.CompletePhaseAsync(cycleId, phaseId, dto);
+                return Ok(ApiResponseDto<PhaseResponseDto>.CreateSuccess(result, "Treatment Phase completed successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while completing the phase."));
+            }
+        }
+
+        /// <summary>
+        /// Get progress information for a specific phase
+        /// </summary>
+        [HttpGet("{cycleId}/phases/{phaseId}/progress")]
+        [Authorize(Roles = "Doctor,Customer,Admin")]
+        public async Task<IActionResult> GetPhaseProgress(int cycleId, int phaseId)
+        {
+            try
+            {
+                var result = await _cycleService.GetPhaseProgressAsync(cycleId, phaseId);
+                return Ok(ApiResponseDto<PhaseProgressDto>.CreateSuccess(result, "Treatment Phase progress retrieved successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while retrieving phase progress."));
+            }
+        }
+
+        /// <summary>
+        /// Generate default phases for a treatment cycle based on treatment type
+        /// </summary>
+        [HttpPost("{cycleId}/phases/generate")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> GenerateDefaultPhases(int cycleId, [FromBody] GeneratePhasesDto dto)
+        {
+            try
+            {
+                var result = await _cycleService.GenerateDefaultPhasesAsync(cycleId, dto);
+                return Ok(ApiResponseDto<List<PhaseResponseDto>>.CreateSuccess(result, 
+                    $"Generated {result.Count} default phases for {dto.TreatmentType} treatment."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while generating default phases."));
+            }
+        }
+
+        #endregion
+
+        #region Cycle Initialization Workflow Endpoints
+
+        /// <summary>
+        /// Initialize a treatment cycle with treatment plan and phases
+        /// </summary>
+        [HttpPost("{id}/initialize")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> InitializeCycle(int id, [FromBody] InitializeCycleDto dto)
+        {
+            var validationResult = await _initializeCycleValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.ToDictionary());
+
+            try
+            {
+                var result = await _cycleService.InitializeCycleAsync(id, dto);
+                return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(result, "Treatment cycle initialized successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while initializing the cycle."));
+            }
+        }
+
+        /// <summary>
+        /// Start treatment for an initialized cycle
+        /// </summary>
+        [HttpPost("{id}/start-treatment")]
+        [Authorize(Roles = "Doctor,Admin")]
+        public async Task<IActionResult> StartTreatment(int id, [FromBody] StartTreatmentDto dto)
+        {
+            var validationResult = await _startTreatmentValidator.ValidateAsync(dto);
+            if (!validationResult.IsValid)
+                return BadRequest(validationResult.ToDictionary());
+
+            try
+            {
+                var result = await _cycleService.StartTreatmentAsync(id, dto);
+                return Ok(ApiResponseDto<CycleResponseDto>.CreateSuccess(result, "Treatment started successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while starting treatment."));
+            }
+        }
+
+        /// <summary>
+        /// Get the timeline of events for a treatment cycle
+        /// </summary>
+        [HttpGet("{id}/timeline")]
+        [Authorize(Roles = "Doctor,Customer,Admin")]
+        public async Task<IActionResult> GetCycleTimeline(int id)
+        {
+            try
+            {
+                var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+                var roleStr = User.FindFirstValue(ClaimTypes.Role);
+                if (!Enum.TryParse<UserRole>(roleStr, out var userRole))
+                    return Forbid();
+
+                // Check if user has access to this cycle
+                var cycle = await _cycleService.GetCycleByIdAsync(id);
+                if (cycle == null)
+                    return NotFound(ApiResponseDto<string>.CreateError("Cycle not found."));
+
+                var hasAccess = await CheckCycleAccessAsync(cycle, userId, userRole);
+                if (!hasAccess)
+                    return Forbid();
+
+                var result = await _cycleService.GetCycleTimelineAsync(id);
+                return Ok(ApiResponseDto<CycleTimelineDto>.CreateSuccess(result, "Cycle timeline retrieved successfully."));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<string>.CreateError("An error occurred while retrieving cycle timeline."));
+            }
+        }
+
+        #endregion
+
+        #region Private Helper Methods
+
+        /// <summary>
+        /// Check if current user has access to the treatment cycle
+        /// </summary>
+        private async Task<bool> CheckCycleAccessAsync(CycleDetailDto cycle, int userId, UserRole userRole)
+        {
+            switch (userRole)
+            {
+                case UserRole.Admin:
+                    return true; // Admin has access to all cycles
+
+                case UserRole.Customer:
+                    // Get customer by userId and check if it matches cycle.CustomerId
+                    var customer = await _customerRepository.GetByUserIdAsync(userId);
+                    return customer != null && customer.Id == cycle.CustomerId;
+
+                case UserRole.Doctor:
+                    // Get doctor by userId and check if it matches cycle.DoctorId  
+                    var doctor = await _doctorRepository.GetByUserIdAsync(userId);
+                    return doctor != null && doctor.Id == cycle.DoctorId;
+
+                default:
+                    return false;
+            }
+        }
+
+        #endregion
     }
 }

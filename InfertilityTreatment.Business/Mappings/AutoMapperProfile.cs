@@ -3,6 +3,9 @@ using InfertilityTreatment.Entity.DTOs.Appointments;
 using InfertilityTreatment.Entity.DTOs.Auth;
 using InfertilityTreatment.Entity.DTOs.Doctors;
 using InfertilityTreatment.Entity.DTOs.DoctorSchedules;
+using InfertilityTreatment.Entity.DTOs.Medications;
+using InfertilityTreatment.Entity.DTOs.Prescription;
+using InfertilityTreatment.Entity.DTOs.Prescriptions;
 using InfertilityTreatment.Entity.DTOs.Results;
 using InfertilityTreatment.Entity.DTOs.Review;
 using InfertilityTreatment.Entity.DTOs.TreatmentCycles;
@@ -11,6 +14,7 @@ using InfertilityTreatment.Entity.DTOs.TreatmentPhase;
 using InfertilityTreatment.Entity.DTOs.TreatmentServices;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using InfertilityTreatment.Entity.Enums;
 
 namespace InfertilityTreatment.Business.Mappings
 {
@@ -82,7 +86,10 @@ namespace InfertilityTreatment.Business.Mappings
 
             //Appointment
             CreateMap<Appointment, AppointmentDto>();
-            CreateMap<CreateAppointmentDto, Appointment>();
+            CreateMap<CreateAppointmentDto, Appointment>()
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => AppointmentStatus.Scheduled))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true));
             CreateMap<UpdateAppointmentDto, Appointment>();
 
             //DoctorSchedule
@@ -96,9 +103,27 @@ namespace InfertilityTreatment.Business.Mappings
             CreateMap<CreateTestResultDto, TestResult>();
             CreateMap<UpdateTestResultDto, TestResult>();
 
+            // Appointment mappings
+            CreateMap<Appointment, AppointmentResponseDto>();
+
             // Review
             CreateMap<Review, ReviewDto>().ReverseMap();
             CreateMap<CreateReviewDto, Review>();
+
+            // Medication
+            CreateMap<Medication, MedicationDetailDto>().ReverseMap();
+            CreateMap<CreateMedicationDto, Medication>();
+            CreateMap<UpdateMedicationDto, Medication>();
+
+            // Prescription
+            CreateMap<Prescription, PrescriptionDetailDto>()
+                .ForMember(dest => dest.MedicationName, opt => opt.MapFrom(src => src.Medication.Name))
+                .ForMember(dest => dest.PhaseName, opt => opt.MapFrom(src => src.TreatmentPhase.PhaseName));
+            CreateMap<CreatePrescriptionDto, Prescription>();
+            CreateMap<UpdatePrescriptionDto, Prescription>();
+            CreateMap<Prescription, PrescriptionSummaryDto>()
+                .ForMember(dest => dest.MedicationName, opt => opt.MapFrom(src => src.Medication.Name))
+                .ForMember(dest => dest.PhaseName, opt => opt.MapFrom(src => src.TreatmentPhase.PhaseName));
         }
     }
 }

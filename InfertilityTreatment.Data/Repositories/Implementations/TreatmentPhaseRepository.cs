@@ -82,7 +82,7 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
 
             if (existingPhase == null)
             {
-                throw new Exception("Treatment phase not found.");
+                throw new InvalidOperationException("Treatment phase not found.");
             }
             existingPhase.PhaseName = treatmentPhase.PhaseName;
             existingPhase.PhaseOrder = treatmentPhase.PhaseOrder;
@@ -99,5 +99,55 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             return result > 0;
         }
 
+        public async Task<TreatmentPhase?> GetTreatmentPhaseByIdAsync(int phaseId)
+        {
+            return await _context.TreatmentPhases
+                .Include(tp => tp.Cycle)
+                .FirstOrDefaultAsync(tp => tp.Id == phaseId && tp.IsActive);
+        }
+
+        public async Task<List<TreatmentPhase>> GetPhasesByCycleIdAsync(int cycleId)
+        {
+            return await _context.TreatmentPhases
+                .Where(tp => tp.CycleId == cycleId && tp.IsActive)
+                .OrderBy(tp => tp.PhaseOrder)
+                .ToListAsync();
+        }
+
+        public async Task<bool> UpdateTreatmentPhaseAsync(TreatmentPhase phase)
+        {
+            try
+            {
+                _context.TreatmentPhases.Update(phase);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        public async Task<TreatmentPhase?> GetFirstPhaseForCycleAsync(int cycleId)
+        {
+            return await _context.TreatmentPhases
+                .Where(tp => tp.CycleId == cycleId && tp.IsActive)
+                .OrderBy(tp => tp.PhaseOrder)
+                .FirstOrDefaultAsync();
+        }
+
+        public async Task<bool> UpdateAsync(TreatmentPhase phase)
+        {
+            try
+            {
+                _context.TreatmentPhases.Update(phase);
+                await _context.SaveChangesAsync();
+                return true;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }

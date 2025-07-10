@@ -34,11 +34,11 @@ namespace InfertilityTreatment.Business.Services
             var review = await _reviewRepository.ApproveReviewAsync(reviewId);
             if (review == null)
             {
-                throw new Exception("Unable to approve review. Review may not exist or is already approved.");
+                throw new InvalidOperationException("Unable to approve review. Review may not exist or is already approved.");
             }
             if (review.DoctorId == null)
             {
-                throw new Exception("Approved review does not have a valid DoctorId.");
+                throw new InvalidOperationException("Approved review does not have a valid DoctorId.");
             }
 
             var successRate = await _reviewRepository.CalculateDoctorSuccessRate(review.DoctorId.Value);
@@ -46,7 +46,7 @@ namespace InfertilityTreatment.Business.Services
             var updateResult = await _doctorRepository.UpdateSuccessRateAsync(review.DoctorId.Value, successRate);
             if (!updateResult)
             {
-                throw new Exception("Failed to update doctor's success rate.");
+                throw new InvalidOperationException("Failed to update doctor's success rate.");
             }
 
             return true;
@@ -54,8 +54,7 @@ namespace InfertilityTreatment.Business.Services
 
         public async Task<ReviewDto> CreateReviewAsync(CreateReviewDto createReviewDto)
         {
-            try
-            {
+            
                 if (createReviewDto.Rating < 1 || createReviewDto.Rating > 5)
                 {
                     throw new ArgumentOutOfRangeException(nameof(createReviewDto.Rating), "Rating must be between 1 and 5.");
@@ -91,7 +90,7 @@ namespace InfertilityTreatment.Business.Services
                 var savedReview = await _reviewRepository.AddReviewAsync(reviewEntity);
                 if (savedReview == null)
                 {
-                    throw new Exception("Unable to create review.");
+                    throw new ApplicationException("Unable to create review.");
                 }
 
                 if (reviewEntity.IsApproved && reviewEntity.DoctorId.HasValue)
@@ -101,11 +100,7 @@ namespace InfertilityTreatment.Business.Services
                 }
 
                 return _mapper.Map<ReviewDto>(savedReview);
-            }
-            catch (Exception ex)
-            {
-                throw new ApplicationException("An error occurred while creating the review.", ex);
-            }
+          
         }
 
 

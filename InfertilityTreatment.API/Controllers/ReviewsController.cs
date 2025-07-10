@@ -25,6 +25,11 @@ namespace InfertilityTreatment.API.Controllers
         [Authorize(Roles = nameof(UserRole.Customer))]
         public async Task<IActionResult> CreateReview([FromBody] CreateReviewDto createReviewDto)
         {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponseDto<ReviewDto>.CreateError("Invalid input data."));
+            }
+
             try
             {
                 var result = await _reviewService.CreateReviewAsync(createReviewDto);
@@ -32,6 +37,23 @@ namespace InfertilityTreatment.API.Controllers
                     return BadRequest(ApiResponseDto<ReviewDto>.CreateError("Failed to create review. Please verify your input."));
 
                 return Ok(ApiResponseDto<ReviewDto>.CreateSuccess(result, "Review created successfully."));
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                return BadRequest(ApiResponseDto<ReviewDto>.CreateError(ex.Message));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return Unauthorized(ApiResponseDto<ReviewDto>.CreateError(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<ReviewDto>.CreateError(ex.Message));
+            }
+            catch (ApplicationException ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError,
+                    ApiResponseDto<ReviewDto>.CreateError(ex.Message));
             }
             catch (Exception ex)
             {
@@ -102,6 +124,10 @@ namespace InfertilityTreatment.API.Controllers
                     return NotFound(ApiResponseDto<string>.CreateError("Review not found or already approved."));
 
                 return Ok(ApiResponseDto<string>.CreateSuccess(null, "Review approved successfully."));
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponseDto<string>.CreateError(ex.Message));
             }
             catch (Exception ex)
             {

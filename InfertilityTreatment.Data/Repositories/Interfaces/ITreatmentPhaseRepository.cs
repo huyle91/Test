@@ -20,5 +20,12 @@ namespace InfertilityTreatment.Data.Repositories.Interfaces
         
         // Specialized Operations
         Task<PaginatedResultDto<TreatmentPhase>> GetCyclePhasesByCycleId(int cycleId, TreatmentPhaseFilterDto filter);
+        
+        // Additional methods for phase management
+        Task<TreatmentPhase?> GetTreatmentPhaseByIdAsync(int phaseId);
+        Task<List<TreatmentPhase>> GetPhasesByCycleIdAsync(int cycleId);
+        Task<bool> UpdateTreatmentPhaseAsync(TreatmentPhase phase);
+        Task<TreatmentPhase?> GetFirstPhaseForCycleAsync(int cycleId);
+        Task<bool> UpdateAsync(TreatmentPhase phase);
     }
 }

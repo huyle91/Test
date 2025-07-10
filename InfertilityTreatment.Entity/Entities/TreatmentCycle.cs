@@ -19,13 +19,27 @@ namespace InfertilityTreatment.Entity.Entities
         public int CycleNumber { get; set; } = 1;
 
         [Required]
-        public CycleStatus Status { get; set; } = CycleStatus.Registered;
+        public CycleStatus Status { get; set; } = CycleStatus.Created;
 
         public DateTime? StartDate { get; set; }
 
         public DateTime? ExpectedEndDate { get; set; }
 
         public DateTime? ActualEndDate { get; set; }
+
+        // New properties for enhanced initialization
+        public DateTime? ActualStartDate { get; set; }
+
+        public DateTime? EstimatedCompletionDate { get; set; }
+
+        [Column(TypeName = "nvarchar(2000)")]
+        public string? TreatmentPlan { get; set; }
+
+        [Column(TypeName = "nvarchar(max)")]
+        public string? SpecialInstructions { get; set; }
+
+        [Column(TypeName = "nvarchar(1000)")]
+        public string? DoctorNotes { get; set; }
 
         [Column(TypeName = "decimal(12,2)")]
         public decimal? TotalCost { get; set; }

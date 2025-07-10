@@ -958,3 +958,91 @@ GO
 COMMIT;
 GO
 
+BEGIN TRANSACTION;
+GO
+
+DECLARE @var4 sysname;
+SELECT @var4 = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[TreatmentPhases]') AND [c].[name] = N'Status');
+IF @var4 IS NOT NULL EXEC(N'ALTER TABLE [TreatmentPhases] DROP CONSTRAINT [' + @var4 + '];');
+ALTER TABLE [TreatmentPhases] ALTER COLUMN [Status] nvarchar(50) NOT NULL;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250707173655_ChangeStatusCyclePharse', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+DECLARE @var5 sysname;
+SELECT @var5 = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Reviews]') AND [c].[name] = N'ReviewType');
+IF @var5 IS NOT NULL EXEC(N'ALTER TABLE [Reviews] DROP CONSTRAINT [' + @var5 + '];');
+ALTER TABLE [Reviews] ALTER COLUMN [ReviewType] nvarchar(max) NOT NULL;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250708082855_UpdateReviewTypeToEnum', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+DECLARE @var6 sysname;
+SELECT @var6 = [d].[name]
+FROM [sys].[default_constraints] [d]
+INNER JOIN [sys].[columns] [c] ON [d].[parent_column_id] = [c].[column_id] AND [d].[parent_object_id] = [c].[object_id]
+WHERE ([d].[parent_object_id] = OBJECT_ID(N'[Reviews]') AND [c].[name] = N'ReviewType');
+IF @var6 IS NOT NULL EXEC(N'ALTER TABLE [Reviews] DROP CONSTRAINT [' + @var6 + '];');
+ALTER TABLE [Reviews] DROP COLUMN [ReviewType];
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250708084828_RemoveReviewTypeToEnum', N'8.0.16');
+GO
+
+COMMIT;
+GO
+
+BEGIN TRANSACTION;
+GO
+
+ALTER TABLE [TreatmentPhases] ADD [ActualStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentPhases] ADD [ScheduledStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [ActualStartDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [DoctorNotes] nvarchar(1000) NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [EstimatedCompletionDate] datetime2 NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [SpecialInstructions] nvarchar(max) NULL;
+GO
+
+ALTER TABLE [TreatmentCycles] ADD [TreatmentPlan] nvarchar(2000) NULL;
+GO
+
+INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+VALUES (N'20250708124103_AddCycleInitializationFields', N'8.0.16');
+GO
+
+COMMIT;
+GO
+

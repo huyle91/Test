@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using InfertilityTreatment.Entity.Constants;
+using System.Collections.Generic;
 
 namespace InfertilityTreatment.Entity.DTOs.Common
 {
@@ -12,14 +13,11 @@ namespace InfertilityTreatment.Entity.DTOs.Common
 
         public PaginatedResultDto(List<T> items, int count, int pageNumber, int pageSize)
         {
-            // Gán mặc định nếu đầu vào không hợp lệ
             PageNumber = pageNumber > 0 ? pageNumber : 1;
-            PageSize = pageSize > 0 ? pageSize : 100;
+            PageSize = pageSize > 0 ? pageSize : PaginationConstants.DefaultPageSize;
 
             Items = items ?? new List<T>();
             TotalCount = count;
-
-            // Tránh chia cho 0
             TotalPages = PageSize > 0
                 ? (int)Math.Ceiling(count / (double)PageSize)
                 : 0;

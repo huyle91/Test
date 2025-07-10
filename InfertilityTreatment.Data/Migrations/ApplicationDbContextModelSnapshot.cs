@@ -755,11 +755,6 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<int>("Rating")
                         .HasColumnType("int");
 
-                    b.Property<string>("ReviewType")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("nvarchar(50)");
-
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
 
@@ -840,6 +835,9 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<DateTime?>("ActualEndDate")
                         .HasColumnType("datetime2");
 
+                    b.Property<DateTime?>("ActualStartDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
@@ -851,6 +849,12 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<int>("DoctorId")
                         .HasColumnType("int");
+
+                    b.Property<string>("DoctorNotes")
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime?>("EstimatedCompletionDate")
+                        .HasColumnType("datetime2");
 
                     b.Property<DateTime?>("ExpectedEndDate")
                         .HasColumnType("datetime2");
@@ -867,6 +871,9 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<int>("PackageId")
                         .HasColumnType("int");
 
+                    b.Property<string>("SpecialInstructions")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
@@ -875,6 +882,9 @@ namespace InfertilityTreatment.Data.Migrations
 
                     b.Property<decimal?>("TotalCost")
                         .HasColumnType("decimal(12,2)");
+
+                    b.Property<string>("TreatmentPlan")
+                        .HasColumnType("nvarchar(2000)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");
@@ -948,6 +958,9 @@ namespace InfertilityTreatment.Data.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("ActualStartDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<decimal>("Cost")
                         .HasColumnType("decimal(12,2)");
 
@@ -977,12 +990,16 @@ namespace InfertilityTreatment.Data.Migrations
                     b.Property<int>("PhaseOrder")
                         .HasColumnType("int");
 
+                    b.Property<DateTime?>("ScheduledStartDate")
+                        .HasColumnType("datetime2");
+
                     b.Property<DateTime?>("StartDate")
                         .HasColumnType("datetime2");
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime2");

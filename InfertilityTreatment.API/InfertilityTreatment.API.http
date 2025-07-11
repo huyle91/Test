@@ -4,3 +4,35 @@ GET {{InfertilityTreatment.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+# Create User (Manager or Doctor)
+POST {{InfertilityTreatment.API_HostAddress}}/api/users
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "email": "manager@example.com",
+  "password": "password123",
+  "fullName": "John Manager",
+  "phoneNumber": "0123456789",
+  "gender": 1,
+  "role": 3
+}
+
+###
+
+# Create Doctor User
+POST {{InfertilityTreatment.API_HostAddress}}/api/users
+Content-Type: application/json
+Authorization: Bearer YOUR_JWT_TOKEN_HERE
+
+{
+  "email": "doctor@example.com",
+  "password": "password123",
+  "fullName": "Dr. Jane Smith",
+  "phoneNumber": "0987654321",
+  "gender": 2,
+  "role": 2
+}
+
+###

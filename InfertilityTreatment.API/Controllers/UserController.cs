@@ -7,6 +7,7 @@ using InfertilityTreatment.Entity.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using FluentValidation;
 using System.Security.Claims;
 
 namespace InfertilityTreatment.API.Controllers
@@ -17,9 +18,12 @@ namespace InfertilityTreatment.API.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserService _userService;
-        public UserController(IUserService userService)
+        private readonly IValidator<CreateUserDto> _createUserValidator;
+        
+        public UserController(IUserService userService, IValidator<CreateUserDto> createUserValidator)
         {
             _userService = userService;
+            _createUserValidator = createUserValidator;
         }
         [HttpGet]
         [Authorize]
@@ -79,6 +83,30 @@ namespace InfertilityTreatment.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<string>.CreateError("An error occurred while changing the password."));
+            }
+        }
+
+        [HttpPost]
+        [Authorize]
+        public async Task<ActionResult<ApiResponseDto<UserProfileDto>>> CreateUser([FromBody] CreateUserDto createUserDto)
+        {
+            try
+            {
+                // Validate request
+                var validationResult = await _createUserValidator.ValidateAsync(createUserDto);
+                if (!validationResult.IsValid)
+                {
+                    var errors = validationResult.Errors.Select(e => e.ErrorMessage).ToList();
+                    return BadRequest(ApiResponseDto<UserProfileDto>.CreateError("Validation failed", errors));
+                }
+
+                // Create user
+                var user = await _userService.CreateUserAsync(createUserDto);
+                return Ok(ApiResponseDto<UserProfileDto>.CreateSuccess(user, "User created successfully."));
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, ApiResponseDto<UserProfileDto>.CreateError("An error occurred while creating the user."));
             }
         }
     }

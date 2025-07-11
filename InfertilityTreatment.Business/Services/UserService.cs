@@ -91,6 +91,23 @@ namespace InfertilityTreatment.Business.Services
             return "Profile updated successfully";
         }
 
-    }
+        public async Task<UserProfileDto> CreateUserAsync(CreateUserDto createUserDto)
+        {
+            // Create user entity
+            var user = _mapper.Map<User>(createUserDto);
+            user.PasswordHash = PasswordHelper.HashPassword(createUserDto.Password);
+            user.CreatedAt = DateTime.UtcNow;
+            user.IsActive = true;
 
+            // Add user to database
+            await _userRepository.AddAsync(user);
+            
+            // If role is Doctor, we might need to create doctor profile in the future
+            // For now, just create the user record
+
+            // Map to response DTO
+            var profileDto = _mapper.Map<UserProfileDto>(user);
+            return profileDto;
+        }
+    }
 }

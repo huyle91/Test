@@ -11,6 +11,8 @@ using InfertilityTreatment.Data.Repositories.Implementations;
 using InfertilityTreatment.Data.Repositories.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json.Serialization;
+using Test.Services;
+using Test.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,11 +32,18 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Configure Database
-builder.Services.AddDbContext<ApplicationDbContext>(options =>
+builder.Services.AddDbContext<InfertilityTreatment.Data.Context.ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Configure Test namespace Database Context - use in-memory database for testing
+builder.Services.AddDbContext<Test.Data.ApplicationDbContext>(options =>
+    options.UseInMemoryDatabase("TestUsersDB"));
 
 // Add Business Services
 builder.Services.AddBusinessServices();
+
+// Add Test namespace services
+builder.Services.AddScoped<Test.Services.IUserService, Test.Services.UserService>();
 
 // Add Payment Gateway Configuration
 builder.Services.AddPaymentGateways(builder.Configuration);
@@ -159,6 +168,13 @@ using (var scope = app.Services.CreateScope())
         await Task.Delay(5000); // Wait 5 seconds after startup
         await queryOptimizationService.WarmupCriticalQueries();
     });
+}
+
+// Initialize Test database
+using (var scope = app.Services.CreateScope())
+{
+    var testDbContext = scope.ServiceProvider.GetRequiredService<Test.Data.ApplicationDbContext>();
+    testDbContext.Database.EnsureCreated();
 }
 
 // Health check endpoint

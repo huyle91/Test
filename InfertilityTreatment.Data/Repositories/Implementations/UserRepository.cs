@@ -26,10 +26,22 @@ namespace InfertilityTreatment.Data.Repositories.Implementations
             return users.FirstOrDefault();
         }
 
+        public async Task<User?> FindByUsernameAsync(string username)
+        {
+            var users = await FindWithIncludeAsync(u => u.Username == username, u => u.Customer, u => u.Doctor);
+            return users.FirstOrDefault();
+        }
+
         public async Task<bool> EmailExistsAsync(string email)
         {
             //return await _dbSet.AnyAsync(u => u.Email == email && u.IsActive);
             var users = await FindWithIncludeAsync(u => u.Email == email);
+            return users.Any();
+        }
+
+        public async Task<bool> UsernameExistsAsync(string username)
+        {
+            var users = await FindWithIncludeAsync(u => u.Username == username);
             return users.Any();
         }
 

@@ -24,6 +24,7 @@ namespace InfertilityTreatment.Business.Mappings
         {
             // User mappings
             CreateMap<User, UserProfileDto>();
+            CreateMap<User, UserResponse>();
             CreateMap<RegisterRequestDto, User>()
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))

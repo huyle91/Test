@@ -5,6 +5,7 @@ using InfertilityTreatment.Data.Repositories.Interfaces;
 using InfertilityTreatment.Entity.DTOs.Common;
 using InfertilityTreatment.Entity.DTOs.Users;
 using InfertilityTreatment.Entity.Entities;
+using InfertilityTreatment.Entity.Enums;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -22,6 +23,48 @@ namespace InfertilityTreatment.Business.Services
         {
             _userRepository = userRepository;
             _mapper = mapper;
+        }
+
+        public async Task<UserResponse> CreateUserAsync(CreateUserRequest request)
+        {
+            // Validate role - only allow Manager and Doctor
+            if (request.Role != UserRole.Manager && request.Role != UserRole.Doctor)
+            {
+                throw new ArgumentException("Role must be either Manager or Doctor");
+            }
+
+            // Check if email already exists
+            if (await _userRepository.EmailExistsAsync(request.Email))
+            {
+                throw new InvalidOperationException("Email already exists");
+            }
+
+            // Check if username already exists
+            if (await _userRepository.UsernameExistsAsync(request.Username))
+            {
+                throw new InvalidOperationException("Username already exists");
+            }
+
+            // Create new user entity
+            var user = new User
+            {
+                Username = request.Username,
+                Email = request.Email,
+                PasswordHash = PasswordHelper.HashPassword(request.Password),
+                FullName = request.FullName ?? request.Username,
+                PhoneNumber = request.PhoneNumber,
+                Gender = request.Gender,
+                Role = request.Role,
+                CreatedAt = DateTime.UtcNow,
+                IsActive = true
+            };
+
+            // Add user to repository
+            var createdUser = await _userRepository.AddAsync(user);
+            
+            // Map to response DTO
+            var response = _mapper.Map<UserResponse>(createdUser);
+            return response;
         }
 
         public async Task<string> ChangePasswordAsync(int userId, ChangePasswordDto changePasswordDto)
